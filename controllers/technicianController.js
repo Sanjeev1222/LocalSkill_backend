@@ -177,14 +177,14 @@ const getDashboard = asyncHandler(async (req, res) => {
     success: true,
     data: {
       technician,
-      stats: {
-        totalBookings,
-        pendingBookings,
-        confirmedBookings,
-        completedBookings,
-        totalEarnings: technician.totalEarnings,
-        rating: technician.rating
-      },
+      isOnline: technician.availability?.isOnline || false,
+      totalBookings,
+      pendingBookings,
+      confirmedBookings,
+      completedBookings,
+      completedJobs: completedBookings,
+      totalEarnings: technician.totalEarnings || 0,
+      rating: technician.rating || { average: 0, count: 0 },
       recentBookings,
       monthlyEarnings
     }

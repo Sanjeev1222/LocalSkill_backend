@@ -226,6 +226,27 @@ const getOwnerDashboard = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .limit(10);
 
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+  const monthlyEarnings = await Rental.aggregate([
+    {
+      $match: {
+        toolOwner: toolOwner._id,
+        status: 'returned',
+        updatedAt: { $gte: sixMonthsAgo }
+      }
+    },
+    {
+      $group: {
+        _id: { $month: '$updatedAt' },
+        total: { $sum: '$totalCost' },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+
   res.json({
     success: true,
     data: {
@@ -235,10 +256,11 @@ const getOwnerDashboard = asyncHandler(async (req, res) => {
         activeRentals,
         pendingRequests,
         completedRentals,
-        totalEarnings: toolOwner.totalEarnings,
+        totalEarnings: toolOwner.totalEarnings || 0,
         rating: toolOwner.rating
       },
-      recentRentals
+      recentRentals,
+      monthlyEarnings
     }
   });
 });

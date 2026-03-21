@@ -17,7 +17,9 @@ const getDashboard = asyncHandler(async (req, res) => {
     totalBookings,
     totalRentals,
     completedBookings,
-    completedRentals
+    completedRentals,
+    pendingBookings,
+    verifiedTechnicians
   ] = await Promise.all([
     User.countDocuments({ role: 'user' }),
     Technician.countDocuments(),
@@ -26,7 +28,9 @@ const getDashboard = asyncHandler(async (req, res) => {
     Booking.countDocuments(),
     Rental.countDocuments(),
     Booking.countDocuments({ status: 'completed' }),
-    Rental.countDocuments({ status: 'returned' })
+    Rental.countDocuments({ status: 'returned' }),
+    Booking.countDocuments({ status: 'pending' }),
+    Technician.countDocuments({ isVerified: true })
   ]);
 
   const bookingRevenue = await Payment.aggregate([
@@ -46,22 +50,23 @@ const getDashboard = asyncHandler(async (req, res) => {
     { $match: { createdAt: { $gte: sixMonthsAgo } } },
     {
       $group: {
-        _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } },
-        count: { $sum: 1 }
+        _id: { $month: '$createdAt' },
+        count: { $sum: 1 },
+        revenue: { $sum: '$finalCost' }
       }
     },
-    { $sort: { '_id.year': 1, '_id.month': 1 } }
+    { $sort: { _id: 1 } }
   ]);
 
   const monthlyRevenue = await Payment.aggregate([
     { $match: { createdAt: { $gte: sixMonthsAgo }, status: 'completed' } },
     {
       $group: {
-        _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } },
+        _id: { $month: '$createdAt' },
         total: { $sum: '$amount' }
       }
     },
-    { $sort: { '_id.year': 1, '_id.month': 1 } }
+    { $sort: { _id: 1 } }
   ]);
 
   const recentBookings = await Booking.find()
@@ -78,19 +83,19 @@ const getDashboard = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      stats: {
-        totalUsers,
-        totalTechnicians,
-        totalToolOwners,
-        totalTools,
-        totalBookings,
-        totalRentals,
-        completedBookings,
-        completedRentals,
-        bookingRevenue: bookingRevenue[0]?.total || 0,
-        rentalRevenue: rentalRevenue[0]?.total || 0,
-        totalRevenue: (bookingRevenue[0]?.total || 0) + (rentalRevenue[0]?.total || 0)
-      },
+      totalUsers,
+      totalTechnicians,
+      totalToolOwners,
+      totalTools,
+      totalBookings,
+      totalRentals,
+      completedBookings,
+      completedRentals,
+      pendingBookings,
+      verifiedTechnicians,
+      bookingRevenue: bookingRevenue[0]?.total || 0,
+      rentalRevenue: rentalRevenue[0]?.total || 0,
+      totalRevenue: (bookingRevenue[0]?.total || 0) + (rentalRevenue[0]?.total || 0),
       monthlyBookings,
       monthlyRevenue,
       recentBookings,
