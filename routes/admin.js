@@ -17,6 +17,7 @@ const {
 
   getAllBookings,
   cancelBooking,
+  completeBooking,
 
   getAllRentals,
   cancelRental,
@@ -51,6 +52,7 @@ router.put('/tools/:id/approve', approveTool);
 // Bookings
 router.get('/bookings', getAllBookings);
 router.put('/bookings/:id/cancel', cancelBooking);
+router.put('/bookings/:id/complete', completeBooking);
 
 // Rentals
 router.get('/rentals', getAllRentals);

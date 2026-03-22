@@ -3,6 +3,7 @@ const TechnicianProfile = require('../models/TechnicianProfile');
 const OwnerProfile = require('../models/OwnerProfile');
 const Tool = require('../models/Tool');
 const Booking = require('../models/Booking');
+const VideoCall = require('../models/VideoCall');
 const Rental = require('../models/Rental');
 const Payment = require('../models/Payment');
 const Review = require('../models/Review');
@@ -303,6 +304,45 @@ const cancelBooking = asyncHandler(async (req, res) => {
   });
 });
 
+const completeBooking = asyncHandler(async (req, res) => {
+  const booking = await Booking.findById(req.params.id).populate('technician');
+  if (!booking) {
+    return res.status(404).json({ success: false, message: 'Booking not found' });
+  }
+
+  if (booking.status === 'completed') {
+    return res.status(400).json({ success: false, message: 'Booking is already completed' });
+  }
+
+  if (booking.status === 'cancelled') {
+    return res.status(400).json({ success: false, message: 'Cannot complete a cancelled booking' });
+  }
+
+  const finalCost = req.body.finalCost || booking.estimatedCost || 0;
+  booking.status = 'completed';
+  booking.finalCost = finalCost;
+  booking.completedAt = new Date();
+  if (booking.paymentMethod === 'cash') booking.paymentStatus = 'paid';
+  await booking.save();
+
+  if (booking.technician) {
+    await TechnicianProfile.findByIdAndUpdate(booking.technician._id, {
+      $inc: { completedJobs: 1, totalEarnings: finalCost }
+    });
+  }
+
+  await VideoCall.findOneAndUpdate(
+    { bookingId: booking._id, status: { $ne: 'ended' } },
+    { status: 'ended' }
+  );
+
+  res.json({
+    success: true,
+    data: booking,
+    message: 'Booking marked as completed'
+  });
+});
+
 const cancelRental = asyncHandler(async (req, res) => {
   const rental = await Rental.findById(req.params.id);
   if (!rental) {
@@ -420,6 +460,7 @@ module.exports = {
   approveTool,
   getAllBookings,
   cancelBooking,
+  completeBooking,
   getAllRentals,
   cancelRental,
   getPayments,
