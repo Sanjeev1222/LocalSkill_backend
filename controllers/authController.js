@@ -201,7 +201,7 @@ const register = asyncHandler(async (req, res) => {
   const user = await User.create({
     name, email, password,
     phone: phone || undefined,
-    isPhoneVerified: !!phone,
+    isPhoneVerified: false,
     roles: userRoles,
     activeRole: selectedRole !== 'USER' ? selectedRole : 'USER',
     geoLocation: geoLocation || {},
