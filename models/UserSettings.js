@@ -1,12 +1,14 @@
 const mongoose = require('mongoose');
 
 const userSettingsSchema = new mongoose.Schema({
-  user: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
     unique: true
   },
+
+  language: { type: String, default: 'en', enum: ['en', 'hi', 'ta', 'te', 'kn', 'ml', 'mr', 'bn', 'gu', 'pa'] },
 
   profile: {
     bio: { type: String, maxlength: 500, default: '' },

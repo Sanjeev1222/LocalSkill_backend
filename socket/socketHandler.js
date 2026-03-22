@@ -65,8 +65,8 @@ const initializeSocket = (io) => {
       try {
 
         // Role restriction
-        const userRoles = socket.user.roles || ['user'];
-        if (userRoles.length === 1 && userRoles[0] === 'toolowner') {
+        const userRoles = socket.user.roles || ['USER'];
+        if (userRoles.length === 1 && userRoles[0] === 'TOOL_OWNER') {
           return socket.emit('call:error', { message: 'Tool owners cannot call' });
         }
 

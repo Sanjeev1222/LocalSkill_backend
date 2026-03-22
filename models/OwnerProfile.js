@@ -7,9 +7,9 @@ const ownerProfileSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  shopName: {
+  businessName: {
     type: String,
-    required: [true, 'Shop name is required'],
+    required: [true, 'Business name is required'],
     trim: true,
     maxlength: 100
   },

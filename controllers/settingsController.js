@@ -7,9 +7,9 @@ const { asyncHandler } = require('../utils/helpers');
 
 // ─── Helper: get or create UserSettings ───
 const getOrCreateSettings = async (userId) => {
-  let settings = await UserSettings.findOne({ user: userId });
+  let settings = await UserSettings.findOne({ userId: userId });
   if (!settings) {
-    settings = await UserSettings.create({ user: userId });
+    settings = await UserSettings.create({ userId: userId });
   }
   return settings;
 };
@@ -33,8 +33,6 @@ const getProfile = asyncHandler(async (req, res) => {
       isPhoneVerified: req.user.isPhoneVerified,
       isEmailVerified: req.user.isEmailVerified,
       isVerified: req.user.isVerified,
-      rating: req.user.rating,
-      totalReviews: req.user.totalReviews,
       createdAt: req.user.createdAt
     }
   });
@@ -54,16 +52,10 @@ const updateProfile = asyncHandler(async (req, res) => {
   }
 
   const settings = await UserSettings.findOneAndUpdate(
-    { user: req.user._id },
+    { userId: req.user._id },
     { $set: updates },
     { new: true, upsert: true, runValidators: true }
   );
-
-  // Sync darkMode to User model
-  if (req.body.darkMode !== undefined) {
-    req.user.darkMode = req.body.darkMode;
-    await req.user.save();
-  }
 
   res.json({ success: true, data: settings.profile });
 });
@@ -150,7 +142,7 @@ const updateNotifications = asyncHandler(async (req, res) => {
   }
 
   const settings = await UserSettings.findOneAndUpdate(
-    { user: req.user._id },
+    { userId: req.user._id },
     { $set: updates },
     { new: true, upsert: true, runValidators: true }
   );
@@ -181,7 +173,7 @@ const updatePrivacy = asyncHandler(async (req, res) => {
   }
 
   const settings = await UserSettings.findOneAndUpdate(
-    { user: req.user._id },
+    { userId: req.user._id },
     { $set: updates },
     { new: true, upsert: true, runValidators: true }
   );
@@ -243,7 +235,7 @@ const removeBankAccount = asyncHandler(async (req, res) => {
 
 const getTechnicianSettings = asyncHandler(async (req, res) => {
   const userRoles = req.user.roles || [];
-  if (!userRoles.includes('technician')) {
+  if (!userRoles.includes('TECHNICIAN')) {
     return res.status(403).json({ success: false, message: 'Technician role required' });
   }
 
@@ -254,9 +246,9 @@ const getTechnicianSettings = asyncHandler(async (req, res) => {
     settings = await TechnicianSettings.create({
       user: req.user._id,
       skills: techProfile?.skills || [],
-      experienceYears: techProfile?.experience || 0,
-      hourlyRate: techProfile?.chargeRate || 0,
-      serviceRadiusKm: techProfile?.serviceRadius || 10
+      experienceYears: techProfile?.experienceYears || 0,
+      hourlyRate: techProfile?.hourlyRate || 0,
+      serviceRadiusKm: techProfile?.serviceRadiusKm || 10
     });
   }
 
@@ -265,7 +257,7 @@ const getTechnicianSettings = asyncHandler(async (req, res) => {
 
 const updateTechnicianSettings = asyncHandler(async (req, res) => {
   const userRoles = req.user.roles || [];
-  if (!userRoles.includes('technician')) {
+  if (!userRoles.includes('TECHNICIAN')) {
     return res.status(403).json({ success: false, message: 'Technician role required' });
   }
 
@@ -290,9 +282,9 @@ const updateTechnicianSettings = asyncHandler(async (req, res) => {
   // Sync key fields back to Technician profile
   const techSync = {};
   if (updates.skills) techSync.skills = updates.skills;
-  if (updates.experienceYears !== undefined) techSync.experience = updates.experienceYears;
-  if (updates.hourlyRate !== undefined) techSync.chargeRate = updates.hourlyRate;
-  if (updates.serviceRadiusKm !== undefined) techSync.serviceRadius = updates.serviceRadiusKm;
+  if (updates.experienceYears !== undefined) techSync.experienceYears = updates.experienceYears;
+  if (updates.hourlyRate !== undefined) techSync.hourlyRate = updates.hourlyRate;
+  if (updates.serviceRadiusKm !== undefined) techSync.serviceRadiusKm = updates.serviceRadiusKm;
 
   if (Object.keys(techSync).length > 0) {
     await TechnicianProfile.findOneAndUpdate({ userId: req.user._id }, { $set: techSync });
@@ -307,7 +299,7 @@ const updateTechnicianSettings = asyncHandler(async (req, res) => {
 
 const getOwnerSettings = asyncHandler(async (req, res) => {
   const userRoles = req.user.roles || [];
-  if (!userRoles.includes('toolowner')) {
+  if (!userRoles.includes('TOOL_OWNER')) {
     return res.status(403).json({ success: false, message: 'Tool Owner role required' });
   }
 
@@ -321,7 +313,7 @@ const getOwnerSettings = asyncHandler(async (req, res) => {
 
 const updateOwnerSettings = asyncHandler(async (req, res) => {
   const userRoles = req.user.roles || [];
-  if (!userRoles.includes('toolowner')) {
+  if (!userRoles.includes('TOOL_OWNER')) {
     return res.status(403).json({ success: false, message: 'Tool Owner role required' });
   }
 
@@ -365,8 +357,6 @@ const getAllSettings = asyncHandler(async (req, res) => {
       activeRole: req.user.activeRole,
       isPhoneVerified: req.user.isPhoneVerified,
       isVerified: req.user.isVerified,
-      rating: req.user.rating,
-      totalReviews: req.user.totalReviews,
       createdAt: req.user.createdAt
     },
     security: userSettings.security,
@@ -375,22 +365,22 @@ const getAllSettings = asyncHandler(async (req, res) => {
     payment: userSettings.payment
   };
 
-  if (userRoles.includes('technician')) {
+  if (userRoles.includes('TECHNICIAN')) {
     let techSettings = await TechnicianSettings.findOne({ user: req.user._id });
     if (!techSettings) {
       const techProfile = await TechnicianProfile.findOne({ userId: req.user._id });
       techSettings = await TechnicianSettings.create({
         user: req.user._id,
         skills: techProfile?.skills || [],
-        experienceYears: techProfile?.experience || 0,
-        hourlyRate: techProfile?.chargeRate || 0,
-        serviceRadiusKm: techProfile?.serviceRadius || 10
+        experienceYears: techProfile?.experienceYears || 0,
+        hourlyRate: techProfile?.hourlyRate || 0,
+        serviceRadiusKm: techProfile?.serviceRadiusKm || 10
       });
     }
     result.technician = techSettings;
   }
 
-  if (userRoles.includes('toolowner')) {
+  if (userRoles.includes('TOOL_OWNER')) {
     let ownerSettings = await OwnerSettings.findOne({ user: req.user._id });
     if (!ownerSettings) {
       ownerSettings = await OwnerSettings.create({ user: req.user._id });

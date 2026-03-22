@@ -70,7 +70,7 @@ const getMyEstimates = asyncHandler(async (req, res) => {
   const estimates = await CostEstimate.find(query)
     .populate({
       path: 'technician',
-      populate: { path: 'userId', select: 'name phone avatar location' }
+      populate: { path: 'userId', select: 'name phone avatar geoLocation address' }
     })
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
@@ -88,10 +88,10 @@ const getMyEstimates = asyncHandler(async (req, res) => {
 // ─── User: Get single estimate detail ───
 const getEstimateById = asyncHandler(async (req, res) => {
   const estimate = await CostEstimate.findById(req.params.id)
-    .populate('user', 'name phone avatar email location')
+    .populate('user', 'name phone avatar email geoLocation address')
     .populate({
       path: 'technician',
-      populate: { path: 'userId', select: 'name phone avatar email location' }
+      populate: { path: 'userId', select: 'name phone avatar email geoLocation address' }
     })
     .populate('bookingId');
 
@@ -103,7 +103,7 @@ const getEstimateById = asyncHandler(async (req, res) => {
   const techUser = await TechnicianProfile.findById(estimate.technician._id || estimate.technician);
   const isOwner = estimate.user._id.toString() === req.user._id.toString();
   const isTech = techUser && techUser.userId.toString() === req.user._id.toString();
-  const isAdmin = (req.user.roles || []).includes('admin');
+  const isAdmin = (req.user.roles || []).includes('ADMIN');
 
   if (!isOwner && !isTech && !isAdmin) {
     return res.status(403).json({ success: false, message: 'Not authorized to view this estimate' });
@@ -124,7 +124,7 @@ const getTechnicianEstimates = asyncHandler(async (req, res) => {
   if (status) query.status = status;
 
   const estimates = await CostEstimate.find(query)
-    .populate('user', 'name phone avatar email location')
+    .populate('user', 'name phone avatar email geoLocation address')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));

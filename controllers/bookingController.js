@@ -47,7 +47,7 @@ const createBooking = asyncHandler(async (req, res) => {
     }
   }
 
-  const estimatedCost = technician.chargeRate;
+  const estimatedCost = technician.hourlyRate;
 
   const booking = await Booking.create({
     user: req.user._id,
@@ -79,7 +79,7 @@ const getMyBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.find(query)
     .populate({
       path: 'technician',
-      populate: { path: 'userId', select: 'name phone avatar location' }
+      populate: { path: 'userId', select: 'name phone avatar geoLocation address' }
     })
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
@@ -105,7 +105,7 @@ const getTechnicianBookings = asyncHandler(async (req, res) => {
   if (status) query.status = status;
 
   const bookings = await Booking.find(query)
-    .populate('user', 'name phone avatar location')
+    .populate('user', 'name phone avatar geoLocation address')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
@@ -215,10 +215,10 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
 
 const getBooking = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(req.params.id)
-    .populate('user', 'name phone avatar location')
+    .populate('user', 'name phone avatar geoLocation address')
     .populate({
       path: 'technician',
-      populate: { path: 'userId', select: 'name phone avatar location' }
+      populate: { path: 'userId', select: 'name phone avatar geoLocation address' }
     });
 
   if (!booking) {
@@ -228,7 +228,7 @@ const getBooking = asyncHandler(async (req, res) => {
   // Ownership check: booking user, technician's user, or admin
   const isBookingUser = booking.user._id.toString() === req.user._id.toString();
   const isTechUser = booking.technician?.userId?._id?.toString() === req.user._id.toString();
-  const isAdmin = (req.user.roles || []).includes('admin');
+  const isAdmin = (req.user.roles || []).includes('ADMIN');
 
   if (!isBookingUser && !isTechUser && !isAdmin) {
     return res.status(403).json({ success: false, message: 'Not authorized to view this booking' });

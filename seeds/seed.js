@@ -30,13 +30,15 @@ const seedData = async () => {
       email: 'admin@localskill.com',
       password: 'admin123',
       phone: '9999999999',
-      roles: ['user', 'admin'],
-      activeRole: 'admin',
+      roles: ['USER', 'ADMIN'],
+      activeRole: 'ADMIN',
       isVerified: true,
-      location: {
+      geoLocation: {
         type: 'Point',
-        coordinates: [77.2090, 28.6139],
-        address: '123 Admin Street',
+        coordinates: [77.2090, 28.6139]
+      },
+      address: {
+        fullAddress: '123 Admin Street',
         city: 'New Delhi',
         state: 'Delhi'
       }
@@ -46,18 +48,21 @@ const seedData = async () => {
     const users = await User.create([
       {
         name: 'Rahul Sharma', email: 'rahul@test.com', password: 'password123',
-        phone: '9876543210', roles: ['user'], activeRole: 'user',
-        location: { type: 'Point', coordinates: [77.2167, 28.6358], address: 'Connaught Place', city: 'New Delhi', state: 'Delhi' }
+        phone: '9876543210', roles: ['USER'], activeRole: 'USER',
+        geoLocation: { type: 'Point', coordinates: [77.2167, 28.6358] },
+        address: { fullAddress: 'Connaught Place', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Priya Patel', email: 'priya@test.com', password: 'password123',
-        phone: '9876543211', roles: ['user'], activeRole: 'user',
-        location: { type: 'Point', coordinates: [72.8777, 19.0760], address: 'Andheri West', city: 'Mumbai', state: 'Maharashtra' }
+        phone: '9876543211', roles: ['USER'], activeRole: 'USER',
+        geoLocation: { type: 'Point', coordinates: [72.8777, 19.0760] },
+        address: { fullAddress: 'Andheri West', city: 'Mumbai', state: 'Maharashtra' }
       },
       {
         name: 'Amit Kumar', email: 'amit@test.com', password: 'password123',
-        phone: '9876543212', roles: ['user'], activeRole: 'user',
-        location: { type: 'Point', coordinates: [77.5946, 12.9716], address: 'Koramangala', city: 'Bangalore', state: 'Karnataka' }
+        phone: '9876543212', roles: ['USER'], activeRole: 'USER',
+        geoLocation: { type: 'Point', coordinates: [77.5946, 12.9716] },
+        address: { fullAddress: 'Koramangala', city: 'Bangalore', state: 'Karnataka' }
       }
     ]);
     console.log('Users created');
@@ -65,40 +70,46 @@ const seedData = async () => {
     const techUsers = await User.create([
       {
         name: 'Vikram Singh', email: 'vikram@tech.com', password: 'password123',
-        phone: '9876543220', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
-        location: { type: 'Point', coordinates: [77.2295, 28.6129], address: 'Lajpat Nagar', city: 'New Delhi', state: 'Delhi' }
+        phone: '9876543220', roles: ['USER', 'TECHNICIAN'], activeRole: 'TECHNICIAN', isVerified: true,
+        geoLocation: { type: 'Point', coordinates: [77.2295, 28.6129] },
+        address: { fullAddress: 'Lajpat Nagar', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Suresh Reddy', email: 'suresh@tech.com', password: 'password123',
-        phone: '9876543221', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
-        location: { type: 'Point', coordinates: [77.2090, 28.6339], address: 'Karol Bagh', city: 'New Delhi', state: 'Delhi' }
+        phone: '9876543221', roles: ['USER', 'TECHNICIAN'], activeRole: 'TECHNICIAN', isVerified: true,
+        geoLocation: { type: 'Point', coordinates: [77.2090, 28.6339] },
+        address: { fullAddress: 'Karol Bagh', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Manoj Tiwari', email: 'manoj@tech.com', password: 'password123',
-        phone: '9876543222', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
-        location: { type: 'Point', coordinates: [72.8557, 19.0550], address: 'Bandra', city: 'Mumbai', state: 'Maharashtra' }
+        phone: '9876543222', roles: ['USER', 'TECHNICIAN'], activeRole: 'TECHNICIAN', isVerified: true,
+        geoLocation: { type: 'Point', coordinates: [72.8557, 19.0550] },
+        address: { fullAddress: 'Bandra', city: 'Mumbai', state: 'Maharashtra' }
       },
       {
         name: 'Rajesh Kumar', email: 'rajesh@tech.com', password: 'password123',
-        phone: '9876543223', roles: ['user', 'technician'], activeRole: 'technician',
-        location: { type: 'Point', coordinates: [77.5800, 12.9500], address: 'HSR Layout', city: 'Bangalore', state: 'Karnataka' }
+        phone: '9876543223', roles: ['USER', 'TECHNICIAN'], activeRole: 'TECHNICIAN',
+        geoLocation: { type: 'Point', coordinates: [77.5800, 12.9500] },
+        address: { fullAddress: 'HSR Layout', city: 'Bangalore', state: 'Karnataka' }
       },
       {
         name: 'Deepak Verma', email: 'deepak@tech.com', password: 'password123',
-        phone: '9876543224', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
-        location: { type: 'Point', coordinates: [77.2300, 28.6500], address: 'Rohini', city: 'New Delhi', state: 'Delhi' }
+        phone: '9876543224', roles: ['USER', 'TECHNICIAN'], activeRole: 'TECHNICIAN', isVerified: true,
+        geoLocation: { type: 'Point', coordinates: [77.2300, 28.6500] },
+        address: { fullAddress: 'Rohini', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Anita Desai', email: 'anita@tech.com', password: 'password123',
-        phone: '9876543225', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
-        location: { type: 'Point', coordinates: [72.8700, 19.0800], address: 'Juhu', city: 'Mumbai', state: 'Maharashtra' }
+        phone: '9876543225', roles: ['USER', 'TECHNICIAN'], activeRole: 'TECHNICIAN', isVerified: true,
+        geoLocation: { type: 'Point', coordinates: [72.8700, 19.0800] },
+        address: { fullAddress: 'Juhu', city: 'Mumbai', state: 'Maharashtra' }
       }
     ]);
 
     const technicians = await TechnicianProfile.create([
       {
         userId: techUsers[0]._id, skills: ['Electrician', 'AC Technician'],
-        experience: 8, chargeRate: 450, chargeType: 'hourly', serviceRadius: 15,
+        experienceYears: 8, hourlyRate: 450, chargeType: 'hourly', serviceRadiusKm: 15,
         bio: 'Experienced electrician with 8+ years in residential and commercial wiring. Certified AC technician.',
         availability: { isOnline: true, slots: [
           { day: 'Monday', startTime: '09:00', endTime: '18:00' },
@@ -112,7 +123,7 @@ const seedData = async () => {
       },
       {
         userId: techUsers[1]._id, skills: ['Plumber', 'Mason'],
-        experience: 12, chargeRate: 540, chargeType: 'hourly', serviceRadius: 20,
+        experienceYears: 12, hourlyRate: 540, chargeType: 'hourly', serviceRadiusKm: 20,
         bio: 'Master plumber specializing in pipe fitting, drainage, and bathroom renovations.',
         availability: { isOnline: true, slots: [
           { day: 'Monday', startTime: '08:00', endTime: '19:00' },
@@ -125,7 +136,7 @@ const seedData = async () => {
       },
       {
         userId: techUsers[2]._id, skills: ['Carpenter', 'Painter', 'Interior Designer'],
-        experience: 15, chargeRate: 720, chargeType: 'per_job', serviceRadius: 25,
+        experienceYears: 15, hourlyRate: 720, chargeType: 'per_job', serviceRadiusKm: 25,
         bio: 'Award-winning carpenter and interior designer. Custom furniture and home makeovers.',
         availability: { isOnline: true, slots: [
           { day: 'Monday', startTime: '10:00', endTime: '20:00' },
@@ -139,7 +150,7 @@ const seedData = async () => {
       },
       {
         userId: techUsers[3]._id, skills: ['Mechanic', 'Welder'],
-        experience: 6, chargeRate: 360, chargeType: 'hourly', serviceRadius: 10,
+        experienceYears: 6, hourlyRate: 360, chargeType: 'hourly', serviceRadiusKm: 10,
         bio: 'Automotive mechanic and welding specialist. Door-step vehicle repair service.',
         availability: { isOnline: true, slots: [
           { day: 'Monday', startTime: '09:00', endTime: '18:00' },
@@ -152,7 +163,7 @@ const seedData = async () => {
       },
       {
         userId: techUsers[4]._id, skills: ['Cleaner', 'Pest Control'],
-        experience: 5, chargeRate: 315, chargeType: 'per_job', serviceRadius: 30,
+        experienceYears: 5, hourlyRate: 315, chargeType: 'per_job', serviceRadiusKm: 30,
         bio: 'Professional cleaning and pest control services for homes and offices.',
         availability: { isOnline: true, slots: [
           { day: 'Monday', startTime: '07:00', endTime: '20:00' },
@@ -167,7 +178,7 @@ const seedData = async () => {
       },
       {
         userId: techUsers[5]._id, skills: ['Appliance Repair', 'Electrician'],
-        experience: 10, chargeRate: 495, chargeType: 'hourly', serviceRadius: 20,
+        experienceYears: 10, hourlyRate: 495, chargeType: 'hourly', serviceRadiusKm: 20,
         bio: 'Appliance repair expert — washing machines, refrigerators, microwaves, and more.',
         availability: { isOnline: false, slots: [
           { day: 'Monday', startTime: '09:00', endTime: '17:00' },
@@ -182,24 +193,26 @@ const seedData = async () => {
     const toolOwnerUsers = await User.create([
       {
         name: 'Sanjeev Tools', email: 'sanjeev@tools.com', password: 'password123',
-        phone: '9876543230', roles: ['user', 'toolowner'], activeRole: 'toolowner', isVerified: true,
-        location: { type: 'Point', coordinates: [77.2100, 28.6300], address: 'Sadar Bazaar', city: 'New Delhi', state: 'Delhi' }
+        phone: '9876543230', roles: ['USER', 'TOOL_OWNER'], activeRole: 'TOOL_OWNER', isVerified: true,
+        geoLocation: { type: 'Point', coordinates: [77.2100, 28.6300] },
+        address: { fullAddress: 'Sadar Bazaar', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Mumbai Rentals', email: 'mumbai@tools.com', password: 'password123',
-        phone: '9876543231', roles: ['user', 'toolowner'], activeRole: 'toolowner', isVerified: true,
-        location: { type: 'Point', coordinates: [72.8600, 19.0650], address: 'Dadar', city: 'Mumbai', state: 'Maharashtra' }
+        phone: '9876543231', roles: ['USER', 'TOOL_OWNER'], activeRole: 'TOOL_OWNER', isVerified: true,
+        geoLocation: { type: 'Point', coordinates: [72.8600, 19.0650] },
+        address: { fullAddress: 'Dadar', city: 'Mumbai', state: 'Maharashtra' }
       }
     ]);
 
     const toolOwners = await OwnerProfile.create([
       {
-        userId: toolOwnerUsers[0]._id, shopName: 'Sanjeev Power Tools',
+        userId: toolOwnerUsers[0]._id, businessName: 'Sanjeev Power Tools',
         description: 'Premium power tools and construction equipment rentals in Delhi NCR.',
         rating: { average: 4.6, count: 22 }, totalRentals: 85, totalEarnings: 127500, isVerified: true
       },
       {
-        userId: toolOwnerUsers[1]._id, shopName: 'Mumbai Tool Hub',
+        userId: toolOwnerUsers[1]._id, businessName: 'Mumbai Tool Hub',
         description: 'Your one-stop shop for all tool rental needs in Mumbai.',
         rating: { average: 4.4, count: 15 }, totalRentals: 62, totalEarnings: 93000, isVerified: true
       }

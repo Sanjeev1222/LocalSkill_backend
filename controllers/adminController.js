@@ -21,7 +21,7 @@ const getDashboard = asyncHandler(async (req, res) => {
     pendingBookings,
     verifiedTechnicians
   ] = await Promise.all([
-    User.countDocuments({ roles: 'user' }),
+    User.countDocuments({ roles: 'USER' }),
     TechnicianProfile.countDocuments(),
     OwnerProfile.countDocuments(),
     Tool.countDocuments(),
@@ -166,7 +166,7 @@ const getAllTechnicians = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
 
   const technicians = await TechnicianProfile.find()
-    .populate('userId', 'name email phone location isBanned')
+    .populate('userId', 'name email phone geoLocation address isBanned')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
@@ -209,10 +209,10 @@ const deleteTool = asyncHandler(async (req, res) => {
 
 const changeUserRole = asyncHandler(async (req, res) => {
   const { role, action } = req.body;
-  const validRoles = ['user', 'technician', 'toolowner', 'admin'];
+  const validRoles = ['USER', 'TECHNICIAN', 'TOOL_OWNER', 'ADMIN'];
 
   if (!role || !validRoles.includes(role)) {
-    return res.status(400).json({ success: false, message: 'Invalid role. Must be one of: user, technician, toolowner, admin' });
+    return res.status(400).json({ success: false, message: 'Invalid role. Must be one of: USER, TECHNICIAN, TOOL_OWNER, ADMIN' });
   }
 
   const user = await User.findById(req.params.id);
@@ -222,12 +222,12 @@ const changeUserRole = asyncHandler(async (req, res) => {
 
   if (action === 'remove') {
     // Remove a role (but never remove 'user')
-    if (role === 'user') {
+    if (role === 'USER') {
       return res.status(400).json({ success: false, message: 'Cannot remove base user role' });
     }
     user.roles = user.roles.filter(r => r !== role);
     if (user.activeRole === role) {
-      user.activeRole = 'user';
+      user.activeRole = 'USER';
     }
   } else {
     // Add a role

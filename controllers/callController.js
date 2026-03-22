@@ -13,7 +13,7 @@ exports.getCallHistory = asyncHandler(async (req, res) => {
   })
     .populate('caller', 'name email avatar')
     .populate('receiver', 'name email avatar')
-    .populate('technician', 'skills chargeRate')
+    .populate('technician', 'skills hourlyRate')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
@@ -41,7 +41,7 @@ exports.getCallById = asyncHandler(async (req, res) => {
   const call = await VideoCall.findById(req.params.id)
     .populate('caller', 'name email avatar')
     .populate('receiver', 'name email avatar')
-    .populate('technician', 'skills chargeRate userId');
+    .populate('technician', 'skills hourlyRate userId');
 
   if (!call) {
     res.status(404);

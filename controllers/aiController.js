@@ -84,12 +84,12 @@ const generateTechInsight = (tech, priority, stats) => {
 
   if (priority === 'cost_saving' || priority === 'best_value') {
     const savingsPercent = stats.avgPrice > 0
-      ? Math.round(((stats.avgPrice - tech.chargeRate) / stats.avgPrice) * 100)
+      ? Math.round(((stats.avgPrice - tech.hourlyRate) / stats.avgPrice) * 100)
       : 0;
     if (savingsPercent > 0) {
       insights.push(`💰 ${savingsPercent}% cheaper than average`);
     } else {
-      insights.push(`💰 Competitive pricing at ₹${tech.chargeRate}/${tech.chargeType === 'hourly' ? 'hr' : 'job'}`);
+      insights.push(`💰 Competitive pricing at ₹${tech.hourlyRate}/${tech.chargeType === 'hourly' ? 'hr' : 'job'}`);
     }
   }
 
@@ -99,10 +99,10 @@ const generateTechInsight = (tech, priority, stats) => {
     insights.push(`⭐ Highly rated (${tech.rating.average.toFixed(1)})`);
   }
 
-  if (tech.experience >= 10) {
-    insights.push(`🏆 Veteran with ${tech.experience}+ years experience`);
-  } else if (tech.experience >= 5) {
-    insights.push(`💼 Experienced (${tech.experience} years)`);
+  if (tech.experienceYears >= 10) {
+    insights.push(`🏆 Veteran with ${tech.experienceYears}+ years experience`);
+  } else if (tech.experienceYears >= 5) {
+    insights.push(`💼 Experienced (${tech.experienceYears} years)`);
   }
 
   if (tech.completedJobs >= 50) {
@@ -180,12 +180,12 @@ const aiSearchTechnicians = asyncHandler(async (req, res) => {
   }
 
   if (minPrice || maxPrice) {
-    matchStage.chargeRate = {};
-    if (minPrice) matchStage.chargeRate.$gte = Number(minPrice);
-    if (maxPrice) matchStage.chargeRate.$lte = Number(maxPrice);
+    matchStage.hourlyRate = {};
+    if (minPrice) matchStage.hourlyRate.$gte = Number(minPrice);
+    if (maxPrice) matchStage.hourlyRate.$lte = Number(maxPrice);
   }
 
-  if (minExp) matchStage.experience = { $gte: Number(minExp) };
+  if (minExp) matchStage.experienceYears = { $gte: Number(minExp) };
   if (minRating) matchStage["rating.average"] = { $gte: Number(minRating) };
 
   let pipeline = [];
@@ -223,9 +223,9 @@ const aiSearchTechnicians = asyncHandler(async (req, res) => {
   }
 
   // ⭐ NORMALIZATION DATA
-  const prices = technicians.map(t => t.chargeRate);
+  const prices = technicians.map(t => t.hourlyRate);
   const ratings = technicians.map(t => t.rating?.average || 0);
-  const experiences = technicians.map(t => t.experience || 0);
+  const experiences = technicians.map(t => t.experienceYears || 0);
   const jobs = technicians.map(t => t.completedJobs || 0);
   const distances = technicians.map(t => t.distance || 10000);
 
@@ -246,9 +246,9 @@ const aiSearchTechnicians = asyncHandler(async (req, res) => {
 
   const scored = technicians.map(t => {
 
-    const priceScore = 1 - normalize(t.chargeRate, stats.minPrice, stats.maxPrice);
+    const priceScore = 1 - normalize(t.hourlyRate, stats.minPrice, stats.maxPrice);
     const ratingScore = normalize(t.rating?.average || 0, stats.minRating, stats.maxRating);
-    const expScore = normalize(t.experience || 0, stats.minExp, stats.maxExp);
+    const expScore = normalize(t.experienceYears || 0, stats.minExp, stats.maxExp);
     const jobsScore = normalize(t.completedJobs || 0, stats.minJobs, stats.maxJobs);
     const verifiedScore = t.isVerified ? 1 : 0;
 
@@ -324,7 +324,7 @@ const aiSearchTools = asyncHandler(async (req, res) => {
   const allTools = await Tool.find(query)
     .populate({
       path: 'owner',
-      populate: { path: 'userId', select: 'name location' }
+      populate: { path: 'userId', select: 'name geoLocation address' }
     });
 
   if (allTools.length === 0) {

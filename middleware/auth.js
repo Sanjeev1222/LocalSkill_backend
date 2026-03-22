@@ -43,7 +43,7 @@ const protect = async (req, res, next) => {
 // Role based access
 const authorize = (...roles) => {
   return (req, res, next) => {
-    const userRoles = req.user.roles || ['user'];
+    const userRoles = req.user.roles || ['USER'];
     const hasRole = userRoles.some(r => roles.includes(r));
     if (!hasRole) {
       return res.status(403).json({
@@ -57,8 +57,8 @@ const authorize = (...roles) => {
 
 // Admin shortcut middleware
 const adminOnly = (req, res, next) => {
-  const userRoles = req.user.roles || ['user'];
-  if (!userRoles.includes('admin')) {
+  const userRoles = req.user.roles || ['USER'];
+  if (!userRoles.includes('ADMIN')) {
     return res.status(403).json({ success: false, message: 'Admin access only' });
   }
   next();

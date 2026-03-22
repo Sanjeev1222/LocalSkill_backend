@@ -17,7 +17,7 @@ const technicianProfileSchema = new mongoose.Schema({
       'Pest Control', 'Gardener', 'Interior Designer'
     ]
   }],
-  experience: {
+  experienceYears: {
     type: Number,
     required: [true, 'Experience is required'],
     min: [0, 'Experience cannot be negative']
@@ -27,17 +27,17 @@ const technicianProfileSchema = new mongoose.Schema({
     enum: ['hourly', 'per_job'],
     default: 'hourly'
   },
-  chargeRate: {
+  hourlyRate: {
     type: Number,
-    required: [true, 'Charge rate is required'],
-    min: [0, 'Charge rate cannot be negative']
+    required: [true, 'Hourly rate is required'],
+    min: [0, 'Hourly rate cannot be negative']
   },
   bio: {
     type: String,
     maxlength: [500, 'Bio cannot exceed 500 characters'],
     default: ''
   },
-  serviceRadius: {
+  serviceRadiusKm: {
     type: Number,
     default: 10,
     min: 1,
@@ -58,7 +58,7 @@ const technicianProfileSchema = new mongoose.Schema({
     average: { type: Number, default: 0, min: 0, max: 5 },
     count: { type: Number, default: 0 }
   },
-  location: {
+  geoLocation: {
     type: {
       type: String,
       enum: ['Point'],
@@ -83,19 +83,19 @@ const technicianProfileSchema = new mongoose.Schema({
 
 technicianProfileSchema.index({ skills: 1 });
 technicianProfileSchema.index({ 'rating.average': -1 });
-technicianProfileSchema.index({ chargeRate: 1 });
-technicianProfileSchema.index({ location: '2dsphere' });
+technicianProfileSchema.index({ hourlyRate: 1 });
+technicianProfileSchema.index({ geoLocation: '2dsphere' });
 
 // AI Optimization Indexes
 technicianProfileSchema.index({
-  location: '2dsphere',
-  chargeRate: 1,
-  experience: -1,
+  geoLocation: '2dsphere',
+  hourlyRate: 1,
+  experienceYears: -1,
   'rating.average': -1
 });
 
 technicianProfileSchema.index({ 'availability.isOnline': 1 });
-technicianProfileSchema.index({ experience: -1 });
+technicianProfileSchema.index({ experienceYears: -1 });
 technicianProfileSchema.index({ skills: 'text', bio: 'text' });
 
 module.exports = mongoose.model('TechnicianProfile', technicianProfileSchema);

@@ -39,7 +39,7 @@ const getTools = asyncHandler(async (req, res) => {
   let tools = await Tool.find(query)
     .populate({
       path: 'owner',
-      populate: { path: 'userId', select: 'name location' }
+      populate: { path: 'userId', select: 'name geoLocation address' }
     })
     .sort(sortOption)
     .skip(skip)
@@ -74,7 +74,7 @@ const getTool = asyncHandler(async (req, res) => {
   const tool = await Tool.findById(req.params.id)
     .populate({
       path: 'owner',
-      populate: { path: 'userId', select: 'name phone avatar location' }
+      populate: { path: 'userId', select: 'name phone avatar geoLocation address' }
     });
 
   if (!tool) {
@@ -96,7 +96,7 @@ const addTool = asyncHandler(async (req, res) => {
   const tool = await Tool.create({
     name, description, category, toolType, images, rentPrice, securityDeposit, condition, specifications,
     owner: toolOwner._id,
-    location: req.user.location || req.body.location
+    location: req.user.geoLocation || req.body.location
   });
 
   res.status(201).json({ success: true, data: tool });

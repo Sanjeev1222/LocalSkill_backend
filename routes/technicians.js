@@ -17,9 +17,9 @@ const { protect, authorize, adminOnly } = require('../middleware/auth');
 router.get('/', getTechnicians);
 
 // Technician personal routes (must be before /:id)
-router.get('/dashboard', protect, authorize('technician'), getDashboard);
-router.put('/profile', protect, authorize('technician'), updateTechnicianProfile);
-router.put('/toggle-status', protect, authorize('technician'), toggleStatus);
+router.get('/dashboard', protect, authorize('TECHNICIAN'), getDashboard);
+router.put('/profile', protect, authorize('TECHNICIAN'), updateTechnicianProfile);
+router.put('/toggle-status', protect, authorize('TECHNICIAN'), toggleStatus);
 
 // Admin moderation
 router.put('/admin/suspend/:id', protect, adminOnly, adminSuspendTechnician);

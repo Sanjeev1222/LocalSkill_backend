@@ -14,22 +14,22 @@ const {
 const { protect, authorize, adminOnly } = require('../middleware/auth');
 
 // Any authenticated user can create a rental (cross-feature: technicians can also rent tools)
-router.post('/', protect, authorize('user', 'technician', 'toolowner'), createRental);
+router.post('/', protect, authorize('USER', 'TECHNICIAN', 'TOOL_OWNER'), createRental);
 
 // User rental history
 router.get('/my', protect, getMyRentals);
 
 // Toolowner rental list
-router.get('/owner', protect, authorize('toolowner'), getOwnerRentals);
+router.get('/owner', protect, authorize('TOOL_OWNER'), getOwnerRentals);
 
 // Owner dashboard analytics
-router.get('/dashboard', protect, authorize('toolowner'), getOwnerDashboard);
+router.get('/dashboard', protect, authorize('TOOL_OWNER'), getOwnerDashboard);
 
 // Only owner can update rental lifecycle
-router.put('/:id/status', protect, authorize('toolowner'), updateRentalStatus);
+router.put('/:id/status', protect, authorize('TOOL_OWNER'), updateRentalStatus);
 
 // Only owner sends return OTP
-router.post('/:id/send-return-otp', protect, authorize('toolowner'), sendRentalReturnOTP);
+router.post('/:id/send-return-otp', protect, authorize('TOOL_OWNER'), sendRentalReturnOTP);
 
 // Admin dispute / cancellation
 router.delete('/:id', protect, adminOnly, adminCancelRental);

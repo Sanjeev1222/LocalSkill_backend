@@ -52,11 +52,11 @@ router.post('/bank', addBankAccount);
 router.delete('/bank/:accountId', removeBankAccount);
 
 // Technician settings (role-checked inside controller)
-router.get('/technician', authorize('technician'), getTechnicianSettings);
-router.put('/technician', authorize('technician'), updateTechnicianSettings);
+router.get('/technician', authorize('TECHNICIAN'), getTechnicianSettings);
+router.put('/technician', authorize('TECHNICIAN'), updateTechnicianSettings);
 
 // Owner settings (role-checked inside controller)
-router.get('/owner', authorize('toolowner'), getOwnerSettings);
-router.put('/owner', authorize('toolowner'), updateOwnerSettings);
+router.get('/owner', authorize('TOOL_OWNER'), getOwnerSettings);
+router.put('/owner', authorize('TOOL_OWNER'), updateOwnerSettings);
 
 module.exports = router;

@@ -10,9 +10,9 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
     unique: true,
     lowercase: true,
+    sparse: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   password: {
@@ -36,56 +36,55 @@ const userSchema = new mongoose.Schema({
       message: 'Phone number must be exactly 10 digits'
     }
   },
-  isPhoneVerified: { type: Boolean, default: false },
-  isEmailVerified: { type: Boolean, default: false },
-  avatar: {
-    type: String,
-    default: ''
-  },
+
   roles: {
     type: [String],
-    enum: ['user', 'technician', 'toolowner', 'admin'],
-    default: ['user']
+    enum: ['USER', 'TECHNICIAN', 'TOOL_OWNER', 'ADMIN'],
+    default: ['USER']
   },
   activeRole: {
     type: String,
-    enum: ['user', 'technician', 'toolowner', 'admin'],
-    default: 'user'
+    enum: ['USER', 'TECHNICIAN', 'TOOL_OWNER', 'ADMIN'],
+    default: 'USER'
   },
-  location: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
-    coordinates: { type: [Number], default: [0, 0] },
-    address: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    pincode: { type: String, default: '' }
-  },
-  trustScore: { type: Number, default: 0, min: 0, max: 100 },
-  rating: { type: Number, default: 0 },
-  totalReviews: { type: Number, default: 0 },
 
-  lastLogin: { type: Date },
+  avatar: { type: String, default: '' },
 
+  isPhoneVerified: { type: Boolean, default: false },
+  isEmailVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   isBanned: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
-  darkMode: { type: Boolean, default: false },
+
+  trustScore: { type: Number, default: 0, min: 0, max: 100 },
+
+  geoLocation: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [0, 0] }
+  },
+
+  address: {
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    pincode: { type: String, default: '' },
+    fullAddress: { type: String, default: '' }
+  },
 
   privacySettings: {
-    showPhone: { type: String, enum: ['everyone', 'booked', 'nobody'], default: 'booked' },
-    showEmail: { type: String, enum: ['everyone', 'booked', 'nobody'], default: 'booked' },
-    showLocation: { type: String, enum: ['everyone', 'booked', 'nobody'], default: 'everyone' }
-  }
+    showPhoneAfterBooking: { type: Boolean, default: true },
+    showExactLocationAfterBooking: { type: Boolean, default: true }
+  },
 
-  
+  lastLoginAt: { type: Date }
 }, {
   timestamps: true
 });
+
+userSchema.index({ phone: 1 }, { unique: true, sparse: true });
 userSchema.index({ roles: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ isBanned: 1 });
-
-userSchema.index({ 'location': '2dsphere' });
+userSchema.index({ 'geoLocation': '2dsphere' });
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

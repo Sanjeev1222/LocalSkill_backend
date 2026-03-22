@@ -8,13 +8,13 @@ const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
 
 // ─── Helper: build user response with all profiles ───
 const buildUserResponse = async (user, token) => {
-  const roles = user.roles || ['user'];
+  const roles = user.roles || ['USER'];
   const profiles = {};
 
-  if (roles.includes('technician')) {
+  if (roles.includes('TECHNICIAN')) {
     profiles.technician = await TechnicianProfile.findOne({ userId: user._id });
   }
-  if (roles.includes('toolowner')) {
+  if (roles.includes('TOOL_OWNER')) {
     profiles.toolOwner = await OwnerProfile.findOne({ userId: user._id });
   }
 
@@ -27,8 +27,8 @@ const buildUserResponse = async (user, token) => {
     roles,
     activeRole: user.activeRole || roles[0],
     avatar: user.avatar,
-    location: user.location,
-    darkMode: user.darkMode,
+    geoLocation: user.geoLocation,
+    address: user.address,
     isEmailVerified: user.isEmailVerified,
     isPhoneVerified: user.isPhoneVerified,
     profiles,
@@ -77,7 +77,7 @@ const verifyRegisterOTP = asyncHandler(async (req, res) => {
 
 // ─── Register (multi-role) ───
 const register = asyncHandler(async (req, res) => {
-  const { name, email, password, phone, role, roles: requestedRoles, location } = req.body;
+  const { name, email, password, phone, role, roles: requestedRoles, geoLocation, address } = req.body;
 
   // Input validation
   if (!name || !email || !password) {
@@ -109,17 +109,17 @@ const register = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Email already registered' });
   }
 
-  // Build roles array — everyone gets 'user' + any additional role
-  let userRoles = ['user'];
-  const selectedRole = role || 'user';
+  // Build roles array — everyone gets 'USER' + any additional role
+  let userRoles = ['USER'];
+  const selectedRole = role || 'USER';
   // Prevent admin role self-assignment during registration
-  if (['technician', 'toolowner'].includes(selectedRole) && !userRoles.includes(selectedRole)) {
+  if (['TECHNICIAN', 'TOOL_OWNER'].includes(selectedRole) && !userRoles.includes(selectedRole)) {
     userRoles.push(selectedRole);
   }
   // Also support explicit roles array from frontend
   if (requestedRoles && Array.isArray(requestedRoles)) {
     requestedRoles.forEach(r => {
-      if (['technician', 'toolowner'].includes(r) && !userRoles.includes(r)) {
+      if (['TECHNICIAN', 'TOOL_OWNER'].includes(r) && !userRoles.includes(r)) {
         userRoles.push(r);
       }
     });
@@ -130,31 +130,32 @@ const register = asyncHandler(async (req, res) => {
     phone: phone || undefined,
     isPhoneVerified: !!phone,
     roles: userRoles,
-    activeRole: selectedRole !== 'user' ? selectedRole : 'user',
-    location: location || {}
+    activeRole: selectedRole !== 'USER' ? selectedRole : 'USER',
+    geoLocation: geoLocation || {},
+    address: address || {}
   });
 
   // Create technician profile if role selected
-  if (userRoles.includes('technician')) {
-    const { skills, experience, chargeRate, chargeType, serviceRadius, bio, availability } = req.body;
+  if (userRoles.includes('TECHNICIAN')) {
+    const { skills, experienceYears, hourlyRate, chargeType, serviceRadiusKm, bio, availability } = req.body;
     await TechnicianProfile.create({
       userId: user._id,
       skills: skills || [],
-      experience: experience || 0,
-      chargeRate: chargeRate || 0,
+      experienceYears: experienceYears || 0,
+      hourlyRate: hourlyRate || 0,
       chargeType: chargeType || 'hourly',
-      serviceRadius: serviceRadius || 10,
+      serviceRadiusKm: serviceRadiusKm || 10,
       bio: bio || '',
       availability: availability || { isOnline: true, slots: [] }
     });
   }
 
   // Create tool owner profile if role selected
-  if (userRoles.includes('toolowner')) {
-    const { shopName, description } = req.body;
+  if (userRoles.includes('TOOL_OWNER')) {
+    const { businessName, description } = req.body;
     await OwnerProfile.create({
       userId: user._id,
-      shopName: shopName || `${name}'s Shop`,
+      businessName: businessName || `${name}'s Shop`,
       description: description || ''
     });
   }
@@ -204,7 +205,7 @@ const getMe = asyncHandler(async (req, res) => {
 
 // ─── Update profile ───
 const updateProfile = asyncHandler(async (req, res) => {
-  const { name, phone, location, avatar, darkMode } = req.body;
+  const { name, phone, geoLocation, address, avatar } = req.body;
 
   if (phone) {
     const phoneCheck = validatePhone(phone);
@@ -215,7 +216,7 @@ const updateProfile = asyncHandler(async (req, res) => {
 
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    { name, phone, location, avatar, darkMode },
+    { name, phone, geoLocation, address, avatar },
     { new: true, runValidators: true }
   );
 
@@ -245,7 +246,7 @@ const addRole = asyncHandler(async (req, res) => {
   const { role } = req.body;
   const user = await User.findById(req.user._id);
 
-  if (!['technician', 'toolowner'].includes(role)) {
+  if (!['TECHNICIAN', 'TOOL_OWNER'].includes(role)) {
     return res.status(400).json({ success: false, message: 'Invalid role. Can only add technician or toolowner.' });
   }
 
@@ -254,29 +255,29 @@ const addRole = asyncHandler(async (req, res) => {
   }
 
   // Create the corresponding profile
-  if (role === 'technician') {
-    const { skills, experience, chargeRate, chargeType, serviceRadius, bio } = req.body;
+  if (role === 'TECHNICIAN') {
+    const { skills, experienceYears, hourlyRate, chargeType, serviceRadiusKm, bio } = req.body;
     const existing = await TechnicianProfile.findOne({ userId: user._id });
     if (!existing) {
       await TechnicianProfile.create({
         userId: user._id,
         skills: skills || [],
-        experience: experience || 0,
-        chargeRate: chargeRate || 0,
+        experienceYears: experienceYears || 0,
+        hourlyRate: hourlyRate || 0,
         chargeType: chargeType || 'hourly',
-        serviceRadius: serviceRadius || 10,
+        serviceRadiusKm: serviceRadiusKm || 10,
         bio: bio || ''
       });
     }
   }
 
-  if (role === 'toolowner') {
-    const { shopName, description } = req.body;
+  if (role === 'TOOL_OWNER') {
+    const { businessName, description } = req.body;
     const existing = await OwnerProfile.findOne({ userId: user._id });
     if (!existing) {
       await OwnerProfile.create({
         userId: user._id,
-        shopName: shopName || `${user.name}'s Shop`,
+        businessName: businessName || `${user.name}'s Shop`,
         description: description || ''
       });
     }
@@ -316,8 +317,8 @@ const googleAuth = asyncHandler(async (req, res) => {
         googleId,
         avatar: avatar || '',
         isEmailVerified: true,
-        roles: ['user'],
-        activeRole: 'user'
+        roles: ['USER'],
+        activeRole: 'USER'
       });
     }
   }

@@ -18,15 +18,15 @@ const getTechnicians = asyncHandler(async (req, res) => {
   }
 
   if (minPrice || maxPrice) {
-    query.chargeRate = {};
-    if (minPrice) query.chargeRate.$gte = Number(minPrice);
-    if (maxPrice) query.chargeRate.$lte = Number(maxPrice);
+    query.hourlyRate = {};
+    if (minPrice) query.hourlyRate.$gte = Number(minPrice);
+    if (maxPrice) query.hourlyRate.$lte = Number(maxPrice);
   }
 
   if (minExp || maxExp) {
-    query.experience = {};
-    if (minExp) query.experience.$gte = Number(minExp);
-    if (maxExp) query.experience.$lte = Number(maxExp);
+    query.experienceYears = {};
+    if (minExp) query.experienceYears.$gte = Number(minExp);
+    if (maxExp) query.experienceYears.$lte = Number(maxExp);
   }
 
   if (minRating) {
@@ -35,17 +35,17 @@ const getTechnicians = asyncHandler(async (req, res) => {
 
   let sortOption = {};
   switch (sortBy) {
-    case 'price_low': sortOption = { chargeRate: 1 }; break;
-    case 'price_high': sortOption = { chargeRate: -1 }; break;
+    case 'price_low': sortOption = { hourlyRate: 1 }; break;
+    case 'price_high': sortOption = { hourlyRate: -1 }; break;
     case 'rating': sortOption = { 'rating.average': -1 }; break;
-    case 'experience': sortOption = { experience: -1 }; break;
+    case 'experience': sortOption = { experienceYears: -1 }; break;
     default: sortOption = { 'rating.average': -1 };
   }
 
   const skip = (Number(page) - 1) * Number(limit);
 
   let technicians = await TechnicianProfile.find(query)
-    .populate('userId', 'name email phone avatar location')
+    .populate('userId', 'name email phone avatar geoLocation address')
     .sort(sortOption)
     .skip(skip)
     .limit(Number(limit));
@@ -56,8 +56,8 @@ const getTechnicians = asyncHandler(async (req, res) => {
     const maxRadius = Number(radius) || 50;
 
     technicians = technicians.filter(tech => {
-      if (tech.userId && tech.userId.location && tech.userId.location.coordinates) {
-        const [techLng, techLat] = tech.userId.location.coordinates;
+      if (tech.userId && tech.userId.geoLocation && tech.userId.geoLocation.coordinates) {
+        const [techLng, techLat] = tech.userId.geoLocation.coordinates;
         const distance = calculateDistance(userLat, userLng, techLat, techLng);
         tech._doc.distance = Math.round(distance * 10) / 10;
         return distance <= maxRadius;
@@ -95,7 +95,7 @@ const getTechnicians = asyncHandler(async (req, res) => {
 
 const getTechnician = asyncHandler(async (req, res) => {
   const technician = await TechnicianProfile.findById(req.params.id)
-    .populate('userId', 'name email phone avatar location');
+    .populate('userId', 'name email phone avatar geoLocation address');
 
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
@@ -118,13 +118,13 @@ const getTechnician = asyncHandler(async (req, res) => {
 });
 
 const updateTechnicianProfile = asyncHandler(async (req, res) => {
-  const { skills, experience, chargeRate, chargeType, serviceRadius, bio, availability, gallery } = req.body;
+  const { skills, experienceYears, hourlyRate, chargeType, serviceRadiusKm, bio, availability, gallery } = req.body;
 
   const technician = await TechnicianProfile.findOneAndUpdate(
     { userId: req.user._id },
-    { skills, experience, chargeRate, chargeType, serviceRadius, bio, availability, gallery },
+    { skills, experienceYears, hourlyRate, chargeType, serviceRadiusKm, bio, availability, gallery },
     { new: true, runValidators: true }
-  ).populate('userId', 'name email phone avatar location');
+  ).populate('userId', 'name email phone avatar geoLocation address');
 
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician profile not found' });
