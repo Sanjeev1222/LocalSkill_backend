@@ -7,7 +7,6 @@ const {
   getTechnicianBookings,
   updateBookingStatus,
   getBooking,
-  sendBookingCompleteOTP,
   adminCancelBooking,
   getContactInfo
 } = require('../controllers/bookingController');
@@ -28,9 +27,6 @@ router.get('/:id', protect, getBooking);
 
 // Only technician can update booking status
 router.put('/:id/status', protect, authorize('TECHNICIAN'), updateBookingStatus);
-
-// Technician send OTP
-router.post('/:id/send-complete-otp', protect, authorize('TECHNICIAN'), sendBookingCompleteOTP);
 
 // Get technician contact info (requires active booking)
 router.get('/contact/:technicianId', protect, getContactInfo);

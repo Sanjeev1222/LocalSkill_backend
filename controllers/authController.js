@@ -1,10 +1,8 @@
 const User = require('../models/User');
 const TechnicianProfile = require('../models/TechnicianProfile');
 const OwnerProfile = require('../models/OwnerProfile');
+const admin = require('../config/firebaseAdmin');
 const { generateToken, asyncHandler, validatePhone } = require('../utils/helpers');
-
-const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
 
 // ─── Helper: build user response with all profiles ───
 const buildUserResponse = async (user, token) => {
@@ -36,43 +34,118 @@ const buildUserResponse = async (user, token) => {
   };
 };
 
-// ─── Send OTP for phone verification (registration) ───
-const sendRegisterOTP = asyncHandler(async (req, res) => {
-  const { phone, name, email } = req.body;
+// ─── Firebase Phone Authentication (login or register) ───
+const firebaseLogin = asyncHandler(async (req, res) => {
+  const { idToken } = req.body;
 
-  if (!name || !email) {
-    return res.status(400).json({ success: false, message: 'Please complete the registration form before verifying phone' });
+  if (!idToken) {
+    return res.status(400).json({ success: false, message: 'Firebase ID token is required' });
   }
 
-  const phoneCheck = validatePhone(phone);
-  if (!phoneCheck.valid) {
-    return res.status(400).json({ success: false, message: phoneCheck.message });
+  // Verify token — backend is the security boundary, never trust client
+  let decodedToken;
+  try {
+    decodedToken = await admin.auth().verifyIdToken(idToken);
+  } catch (err) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired Firebase token' });
   }
 
-  const verification = await twilioClient.verify.v2
-    .services(VERIFY_SERVICE_SID)
-    .verifications.create({ to: `+91${phone}`, channel: 'sms' });
-
-  res.json({
-    success: true,
-    message: 'OTP sent successfully to your phone',
-    status: verification.status
-  });
-});
-
-// ─── Verify OTP for registration ───
-const verifyRegisterOTP = asyncHandler(async (req, res) => {
-  const { phone, otp } = req.body;
-
-  const verificationCheck = await twilioClient.verify.v2
-    .services(VERIFY_SERVICE_SID)
-    .verificationChecks.create({ to: `+91${phone}`, code: otp });
-
-  if (verificationCheck.status !== 'approved') {
-    return res.status(400).json({ success: false, message: 'Invalid OTP. Please try again.' });
+  const { uid: firebaseUid, phone_number: rawPhone } = decodedToken;
+  if (!rawPhone) {
+    return res.status(400).json({ success: false, message: 'Phone authentication required' });
   }
 
-  res.json({ success: true, message: 'Phone verified successfully' });
+  // Normalise: +91XXXXXXXXXX → 10-digit string stored in User.phone
+  const digits = rawPhone.replace(/\D/g, '');
+  const phone = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
+
+  let user = await User.findOne({ $or: [{ firebaseUid }, { phone }] });
+  let isNewUser = false;
+
+  if (user) {
+    if (user.isBanned) {
+      return res.status(403).json({ success: false, message: 'Account has been suspended' });
+    }
+    // Link Firebase UID if this account was previously email/password only
+    if (!user.firebaseUid) {
+      user.firebaseUid = firebaseUid;
+      user.isPhoneVerified = true;
+      await user.save();
+    }
+  } else {
+    isNewUser = true;
+    const {
+      name, email, password, role, roles: requestedRoles,
+      geoLocation, address, skills, experienceYears, hourlyRate,
+      chargeType, serviceRadiusKm, bio, businessName, description
+    } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Name is required for new accounts' });
+    }
+
+    let userRoles = ['USER'];
+    const selectedRole = role || 'USER';
+    if (['TECHNICIAN', 'TOOL_OWNER'].includes(selectedRole)) userRoles.push(selectedRole);
+    if (Array.isArray(requestedRoles)) {
+      requestedRoles.forEach(r => {
+        if (['TECHNICIAN', 'TOOL_OWNER'].includes(r) && !userRoles.includes(r)) userRoles.push(r);
+      });
+    }
+
+    if (email) {
+      const emailExists = await User.findOne({ email: email.toLowerCase() });
+      if (emailExists) {
+        return res.status(400).json({ success: false, message: 'Email already registered' });
+      }
+    }
+
+    try {
+      user = await User.create({
+        name: name.trim(),
+        email: email ? email.toLowerCase() : undefined,
+        password: password || undefined,
+        phone,
+        firebaseUid,
+        isPhoneVerified: true,
+        roles: userRoles,
+        activeRole: selectedRole,
+        geoLocation: geoLocation || { type: 'Point', coordinates: [0, 0] },
+        address: address || {}
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        // Race condition: concurrent request already created the user
+        user = await User.findOne({ $or: [{ firebaseUid }, { phone }] });
+        if (!user) throw err;
+      } else {
+        throw err;
+      }
+    }
+
+    if (userRoles.includes('TECHNICIAN')) {
+      await TechnicianProfile.create({
+        userId: user._id,
+        skills: skills || [],
+        experienceYears: Number(experienceYears) || 0,
+        hourlyRate: Number(hourlyRate) || 0,
+        chargeType: chargeType || 'hourly',
+        serviceRadiusKm: Number(serviceRadiusKm) || 10,
+        bio: bio || ''
+      });
+    }
+    if (userRoles.includes('TOOL_OWNER')) {
+      await OwnerProfile.create({
+        userId: user._id,
+        businessName: businessName || `${name.trim()}'s Shop`,
+        description: description || ''
+      });
+    }
+  }
+
+  const token = generateToken(user._id);
+  const responseData = await buildUserResponse(user, token);
+  res.status(isNewUser ? 201 : 200).json({ success: true, data: responseData, isNewUser });
 });
 
 // ─── Register (multi-role) ───
@@ -335,6 +408,6 @@ const googleAuth = asyncHandler(async (req, res) => {
 
 module.exports = {
   register, login, getMe, updateProfile, googleAuth,
-  sendRegisterOTP, verifyRegisterOTP,
+  firebaseLogin,
   switchRole, addRole
 };

@@ -5,9 +5,6 @@ const User = require('../models/User');
 const Payment = require('../models/Payment');
 const { asyncHandler } = require('../utils/helpers');
 
-const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
-
 const createRental = asyncHandler(async (req, res) => {
   const { toolId, rentalPeriod, duration, paymentMethod, notes } = req.body;
 
@@ -149,25 +146,6 @@ const updateRentalStatus = asyncHandler(async (req, res) => {
   rental.status = status;
 
   if (status === 'returned') {
-    // Verify OTP before marking returned
-    const { otp } = req.body;
-    if (!otp) {
-      return res.status(400).json({ success: false, message: 'OTP is required to confirm tool return' });
-    }
-
-    const renter = await User.findById(rental.user);
-    if (!renter || !renter.phone) {
-      return res.status(400).json({ success: false, message: 'Renter phone number not available for verification' });
-    }
-
-    const verificationCheck = await twilioClient.verify.v2
-      .services(VERIFY_SERVICE_SID)
-      .verificationChecks.create({ to: `+91${renter.phone}`, code: otp });
-
-    if (verificationCheck.status !== 'approved') {
-      return res.status(400).json({ success: false, message: 'Invalid OTP. Please try again.' });
-    }
-
     rental.returnConfirmed = true;
     rental.returnDate = new Date();
     rental.condition.onReturn = conditionOnReturn || 'good';
@@ -203,41 +181,6 @@ const updateRentalStatus = asyncHandler(async (req, res) => {
     .populate('user', 'name phone avatar');
 
   res.json({ success: true, data: updatedRental });
-});
-
-// ─── Send OTP for tool return (sent to renter's phone) ───
-const sendRentalReturnOTP = asyncHandler(async (req, res) => {
-  const rental = await Rental.findById(req.params.id)
-    .populate('user', 'name phone');
-
-  if (!rental) {
-    return res.status(404).json({ success: false, message: 'Rental not found' });
-  }
-
-  // Verify this tool owner owns this rental
-  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
-  if (!toolOwner || rental.toolOwner.toString() !== toolOwner._id.toString()) {
-    return res.status(403).json({ success: false, message: 'Not authorized for this rental' });
-  }
-
-  if (rental.status !== 'active' && rental.status !== 'overdue') {
-    return res.status(400).json({ success: false, message: 'Rental must be active to send return OTP' });
-  }
-
-  if (!rental.user?.phone) {
-    return res.status(400).json({ success: false, message: 'Renter phone number not available' });
-  }
-
-  const verification = await twilioClient.verify.v2
-    .services(VERIFY_SERVICE_SID)
-    .verifications.create({ to: `+91${rental.user.phone}`, channel: 'sms' });
-
-  res.json({
-    success: true,
-    message: `OTP sent to renter ${rental.user.name}'s phone`,
-    status: verification.status,
-    userPhone: `****${rental.user.phone.slice(-4)}`
-  });
 });
 
 const getOwnerDashboard = asyncHandler(async (req, res) => {
@@ -327,6 +270,5 @@ module.exports = {
   getOwnerRentals,
   updateRentalStatus,
   getOwnerDashboard,
-  sendRentalReturnOTP,
   adminCancelRental
 };

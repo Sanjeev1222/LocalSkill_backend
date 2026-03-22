@@ -5,9 +5,6 @@ const Payment = require('../models/Payment');
 const VideoCall = require('../models/VideoCall');
 const { asyncHandler, maskPhone } = require('../utils/helpers');
 
-const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
-
 const createBooking = asyncHandler(async (req, res) => {
   const { technicianId, service, description, scheduledDate, timeSlot, location, paymentMethod } = req.body;
 
@@ -191,25 +188,6 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
   }
 
   if (status === 'completed') {
-    // Verify OTP before completing
-    const { otp } = req.body;
-    if (!otp) {
-      return res.status(400).json({ success: false, message: 'OTP is required to complete a booking' });
-    }
-
-    const user = await User.findById(booking.user);
-    if (!user || !user.phone) {
-      return res.status(400).json({ success: false, message: 'User phone number not available for verification' });
-    }
-
-    const verificationCheck = await twilioClient.verify.v2
-      .services(VERIFY_SERVICE_SID)
-      .verificationChecks.create({ to: `+91${user.phone}`, code: otp });
-
-    if (verificationCheck.status !== 'approved') {
-      return res.status(400).json({ success: false, message: 'Invalid OTP. Please try again.' });
-    }
-
     booking.finalCost = finalCost || booking.estimatedCost;
     booking.completedAt = new Date();
     booking.paymentStatus = booking.paymentMethod === 'cash' ? 'paid' : booking.paymentStatus;
@@ -279,41 +257,6 @@ const getBooking = asyncHandler(async (req, res) => {
   res.json({ success: true, data: booking });
 });
 
-// ─── Send OTP for booking completion (sent to user's phone) ───
-const sendBookingCompleteOTP = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id)
-    .populate('user', 'name phone');
-
-  if (!booking) {
-    return res.status(404).json({ success: false, message: 'Booking not found' });
-  }
-
-  // Verify this technician owns this booking
-  const technician = await TechnicianProfile.findOne({ userId: req.user._id });
-  if (!technician || booking.technician.toString() !== technician._id.toString()) {
-    return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
-  }
-
-  if (booking.status !== 'in_progress') {
-    return res.status(400).json({ success: false, message: 'Booking must be in progress to send completion OTP' });
-  }
-
-  if (!booking.user?.phone) {
-    return res.status(400).json({ success: false, message: 'User phone number not available' });
-  }
-
-  const verification = await twilioClient.verify.v2
-    .services(VERIFY_SERVICE_SID)
-    .verifications.create({ to: `+91${booking.user.phone}`, channel: 'sms' });
-
-  res.json({
-    success: true,
-    message: `OTP sent to user ${booking.user.name}'s phone`,
-    status: verification.status,
-    userPhone: `****${booking.user.phone.slice(-4)}`
-  });
-});
-
 const adminCancelBooking = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(req.params.id);
   if (!booking) {
@@ -373,7 +316,6 @@ module.exports = {
   getTechnicianBookings,
   updateBookingStatus,
   getBooking,
-  sendBookingCompleteOTP,
   adminCancelBooking,
   getContactInfo
 };

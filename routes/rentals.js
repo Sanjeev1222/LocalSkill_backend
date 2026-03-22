@@ -7,7 +7,6 @@ const {
   getOwnerRentals,
   updateRentalStatus,
   getOwnerDashboard,
-  sendRentalReturnOTP,
   adminCancelRental
 } = require('../controllers/rentalController');
 
@@ -27,9 +26,6 @@ router.get('/dashboard', protect, authorize('TOOL_OWNER'), getOwnerDashboard);
 
 // Only owner can update rental lifecycle
 router.put('/:id/status', protect, authorize('TOOL_OWNER'), updateRentalStatus);
-
-// Only owner sends return OTP
-router.post('/:id/send-return-otp', protect, authorize('TOOL_OWNER'), sendRentalReturnOTP);
 
 // Admin dispute / cancellation
 router.delete('/:id', protect, adminOnly, adminCancelRental);

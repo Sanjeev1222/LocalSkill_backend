@@ -17,11 +17,16 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [function() { return !this.googleId; }, 'Password is required'],
+    required: [function() { return !this.googleId && !this.firebaseUid; }, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters'],
     select: false
   },
   googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  firebaseUid: {
     type: String,
     unique: true,
     sparse: true
