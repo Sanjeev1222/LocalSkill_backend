@@ -6,6 +6,36 @@ const { generateToken, asyncHandler, validatePhone } = require('../utils/helpers
 const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
 
+// ─── Helper: build user response with all profiles ───
+const buildUserResponse = async (user, token) => {
+  const roles = user.roles || ['user'];
+  const profiles = {};
+
+  if (roles.includes('technician')) {
+    profiles.technician = await Technician.findOne({ user: user._id });
+  }
+  if (roles.includes('toolowner')) {
+    profiles.toolOwner = await ToolOwner.findOne({ user: user._id });
+  }
+
+  return {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.activeRole || roles[0],
+    roles,
+    activeRole: user.activeRole || roles[0],
+    avatar: user.avatar,
+    location: user.location,
+    darkMode: user.darkMode,
+    isEmailVerified: user.isEmailVerified,
+    isPhoneVerified: user.isPhoneVerified,
+    profiles,
+    token
+  };
+};
+
 // ─── Send OTP for phone verification (registration) ───
 const sendRegisterOTP = asyncHandler(async (req, res) => {
   const { phone } = req.body;
@@ -41,10 +71,10 @@ const verifyRegisterOTP = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Phone verified successfully' });
 });
 
+// ─── Register (multi-role) ───
 const register = asyncHandler(async (req, res) => {
-  const { name, email, password, phone, role, location } = req.body;
+  const { name, email, password, phone, role, roles: requestedRoles, location } = req.body;
 
-  // Validate phone if provided
   if (phone) {
     const phoneCheck = validatePhone(phone);
     if (!phoneCheck.valid) {
@@ -57,15 +87,32 @@ const register = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Email already registered' });
   }
 
+  // Build roles array — everyone gets 'user' + any additional role
+  let userRoles = ['user'];
+  const selectedRole = role || 'user';
+  if (selectedRole !== 'user' && !userRoles.includes(selectedRole)) {
+    userRoles.push(selectedRole);
+  }
+  // Also support explicit roles array from frontend
+  if (requestedRoles && Array.isArray(requestedRoles)) {
+    requestedRoles.forEach(r => {
+      if (['technician', 'toolowner'].includes(r) && !userRoles.includes(r)) {
+        userRoles.push(r);
+      }
+    });
+  }
+
   const user = await User.create({
     name, email, password,
     phone: phone || undefined,
     isPhoneVerified: !!phone,
-    role: role || 'user',
+    roles: userRoles,
+    activeRole: selectedRole !== 'user' ? selectedRole : 'user',
     location: location || {}
   });
 
-  if (role === 'technician') {
+  // Create technician profile if role selected
+  if (userRoles.includes('technician')) {
     const { skills, experience, chargeRate, chargeType, serviceRadius, bio, availability } = req.body;
     await Technician.create({
       user: user._id,
@@ -79,7 +126,8 @@ const register = asyncHandler(async (req, res) => {
     });
   }
 
-  if (role === 'toolowner') {
+  // Create tool owner profile if role selected
+  if (userRoles.includes('toolowner')) {
     const { shopName, description } = req.body;
     await ToolOwner.create({
       user: user._id,
@@ -89,19 +137,12 @@ const register = asyncHandler(async (req, res) => {
   }
 
   const token = generateToken(user._id);
+  const responseData = await buildUserResponse(user, token);
 
-  res.status(201).json({
-    success: true,
-    data: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token
-    }
-  });
+  res.status(201).json({ success: true, data: responseData });
 });
 
+// ─── Login (multi-role) ───
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -124,52 +165,24 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const token = generateToken(user._id);
+  const responseData = await buildUserResponse(user, token);
 
-  // get profile data if exists
-  let profile = null;
-  if (user.role === 'technician') {
-    profile = await Technician.findOne({ user: user._id });
-  } else if (user.role === 'toolowner') {
-    profile = await ToolOwner.findOne({ user: user._id });
-  }
-
-  res.json({
-    success: true,
-    data: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      avatar: user.avatar,
-      location: user.location,
-      darkMode: user.darkMode,
-      profile,
-      token
-    }
-  });
+  res.json({ success: true, data: responseData });
 });
 
+// ─── Get current user (multi-role) ───
 const getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
+  const responseData = await buildUserResponse(user, null);
+  delete responseData.token;
 
-  let profile = null;
-  if (user.role === 'technician') {
-    profile = await Technician.findOne({ user: user._id });
-  } else if (user.role === 'toolowner') {
-    profile = await ToolOwner.findOne({ user: user._id });
-  }
-
-  res.json({
-    success: true,
-    data: { ...user.toObject(), profile }
-  });
+  res.json({ success: true, data: responseData });
 });
 
+// ─── Update profile ───
 const updateProfile = asyncHandler(async (req, res) => {
   const { name, phone, location, avatar, darkMode } = req.body;
 
-  // Validate phone if provided
   if (phone) {
     const phoneCheck = validatePhone(phone);
     if (!phoneCheck.valid) {
@@ -186,7 +199,77 @@ const updateProfile = asyncHandler(async (req, res) => {
   res.json({ success: true, data: user });
 });
 
-// ─── Google OAuth Login / Register ───
+// ─── Switch active role ───
+const switchRole = asyncHandler(async (req, res) => {
+  const { role } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (!user.roles.includes(role)) {
+    return res.status(400).json({ success: false, message: `You don't have the '${role}' role` });
+  }
+
+  user.activeRole = role;
+  await user.save();
+
+  const responseData = await buildUserResponse(user, null);
+  delete responseData.token;
+
+  res.json({ success: true, data: responseData, message: `Switched to ${role} mode` });
+});
+
+// ─── Add role to existing account (role upgrade) ───
+const addRole = asyncHandler(async (req, res) => {
+  const { role } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (!['technician', 'toolowner'].includes(role)) {
+    return res.status(400).json({ success: false, message: 'Invalid role. Can only add technician or toolowner.' });
+  }
+
+  if (user.roles.includes(role)) {
+    return res.status(400).json({ success: false, message: `You already have the '${role}' role` });
+  }
+
+  // Create the corresponding profile
+  if (role === 'technician') {
+    const { skills, experience, chargeRate, chargeType, serviceRadius, bio } = req.body;
+    const existing = await Technician.findOne({ user: user._id });
+    if (!existing) {
+      await Technician.create({
+        user: user._id,
+        skills: skills || [],
+        experience: experience || 0,
+        chargeRate: chargeRate || 0,
+        chargeType: chargeType || 'hourly',
+        serviceRadius: serviceRadius || 10,
+        bio: bio || ''
+      });
+    }
+  }
+
+  if (role === 'toolowner') {
+    const { shopName, description } = req.body;
+    const existing = await ToolOwner.findOne({ user: user._id });
+    if (!existing) {
+      await ToolOwner.create({
+        user: user._id,
+        shopName: shopName || `${user.name}'s Shop`,
+        description: description || ''
+      });
+    }
+  }
+
+  user.roles.push(role);
+  user.activeRole = role;
+  await user.save();
+
+  const token = generateToken(user._id);
+  const responseData = await buildUserResponse(user, token);
+
+  res.json({ success: true, data: responseData, message: `${role} role added successfully!` });
+});
+
+// ─── Google OAuth Login / Register (multi-role) ───
 const googleAuth = asyncHandler(async (req, res) => {
   const { googleId, email, name, avatar } = req.body;
 
@@ -194,11 +277,9 @@ const googleAuth = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Google ID and email are required' });
   }
 
-  // Check if user exists with this Google ID
   let user = await User.findOne({ googleId });
 
   if (!user) {
-    // Check if email already exists (link accounts)
     user = await User.findOne({ email });
     if (user) {
       user.googleId = googleId;
@@ -206,14 +287,14 @@ const googleAuth = asyncHandler(async (req, res) => {
       if (avatar && !user.avatar) user.avatar = avatar;
       await user.save();
     } else {
-      // Create new user via Google
       user = await User.create({
         name,
         email,
         googleId,
         avatar: avatar || '',
         isEmailVerified: true,
-        role: 'user'
+        roles: ['user'],
+        activeRole: 'user'
       });
     }
   }
@@ -223,31 +304,13 @@ const googleAuth = asyncHandler(async (req, res) => {
   }
 
   const token = generateToken(user._id);
+  const responseData = await buildUserResponse(user, token);
 
-  let profile = null;
-  if (user.role === 'technician') {
-    profile = await Technician.findOne({ user: user._id });
-  } else if (user.role === 'toolowner') {
-    profile = await ToolOwner.findOne({ user: user._id });
-  }
-
-  res.json({
-    success: true,
-    data: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      avatar: user.avatar,
-      location: user.location,
-      darkMode: user.darkMode,
-      isEmailVerified: user.isEmailVerified,
-      isPhoneVerified: user.isPhoneVerified,
-      profile,
-      token
-    }
-  });
+  res.json({ success: true, data: responseData });
 });
 
-module.exports = { register, login, getMe, updateProfile, googleAuth, sendRegisterOTP, verifyRegisterOTP };
+module.exports = {
+  register, login, getMe, updateProfile, googleAuth,
+  sendRegisterOTP, verifyRegisterOTP,
+  switchRole, addRole
+};

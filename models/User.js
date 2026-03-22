@@ -42,7 +42,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  role: {
+  roles: {
+    type: [String],
+    enum: ['user', 'technician', 'toolowner', 'admin'],
+    default: ['user']
+  },
+  activeRole: {
     type: String,
     enum: ['user', 'technician', 'toolowner', 'admin'],
     default: 'user'
@@ -88,7 +93,7 @@ profileCompleted: { type: Boolean, default: false },
 }, {
   timestamps: true
 });
-userSchema.index({ role: 1 });
+userSchema.index({ roles: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ isBanned: 1 });
 

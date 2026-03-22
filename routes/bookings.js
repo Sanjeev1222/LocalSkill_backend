@@ -13,8 +13,8 @@ const {
 
 const { protect, authorize, adminOnly } = require('../middleware/auth');
 
-// User creates booking
-router.post('/', protect, authorize('user'), createBooking);
+// Any authenticated user can create a booking (cross-feature: technicians & toolowners can also book)
+router.post('/', protect, authorize('user', 'technician', 'toolowner'), createBooking);
 
 // User booking history
 router.get('/my', protect, getMyBookings);

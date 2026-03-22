@@ -46,10 +46,12 @@ const protect = async (req, res, next) => {
 // Role based access
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    const userRoles = req.user.roles || [req.user.role || 'user'];
+    const hasRole = userRoles.some(r => roles.includes(r));
+    if (!hasRole) {
       return res.status(403).json({
         success: false,
-        message: `Role '${req.user.role}' not permitted`
+        message: `Your roles [${userRoles.join(', ')}] are not permitted for this action`
       });
     }
     next();
@@ -58,7 +60,8 @@ const authorize = (...roles) => {
 
 // Admin shortcut middleware
 const adminOnly = (req, res, next) => {
-  if (req.user.role !== 'admin') {
+  const userRoles = req.user.roles || [req.user.role || 'user'];
+  if (!userRoles.includes('admin')) {
     return res.status(403).json({ success: false, message: 'Admin access only' });
   }
   next();

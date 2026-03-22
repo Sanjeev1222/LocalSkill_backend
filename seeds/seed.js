@@ -30,7 +30,8 @@ const seedData = async () => {
       email: 'admin@localskill.com',
       password: 'admin123',
       phone: '9999999999',
-      role: 'admin',
+      roles: ['user', 'admin'],
+      activeRole: 'admin',
       isVerified: true,
       location: {
         type: 'Point',
@@ -45,17 +46,17 @@ const seedData = async () => {
     const users = await User.create([
       {
         name: 'Rahul Sharma', email: 'rahul@test.com', password: 'password123',
-        phone: '9876543210', role: 'user',
+        phone: '9876543210', roles: ['user'], activeRole: 'user',
         location: { type: 'Point', coordinates: [77.2167, 28.6358], address: 'Connaught Place', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Priya Patel', email: 'priya@test.com', password: 'password123',
-        phone: '9876543211', role: 'user',
+        phone: '9876543211', roles: ['user'], activeRole: 'user',
         location: { type: 'Point', coordinates: [72.8777, 19.0760], address: 'Andheri West', city: 'Mumbai', state: 'Maharashtra' }
       },
       {
         name: 'Amit Kumar', email: 'amit@test.com', password: 'password123',
-        phone: '9876543212', role: 'user',
+        phone: '9876543212', roles: ['user'], activeRole: 'user',
         location: { type: 'Point', coordinates: [77.5946, 12.9716], address: 'Koramangala', city: 'Bangalore', state: 'Karnataka' }
       }
     ]);
@@ -64,20 +65,35 @@ const seedData = async () => {
     const techUsers = await User.create([
       {
         name: 'Vikram Singh', email: 'vikram@tech.com', password: 'password123',
-        phone: '9876543220', role: 'technician', isVerified: true,
+        phone: '9876543220', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
         location: { type: 'Point', coordinates: [77.2295, 28.6129], address: 'Lajpat Nagar', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Suresh Reddy', email: 'suresh@tech.com', password: 'password123',
-        phone: '9876543221', role: 'technician', isVerified: true,
+        phone: '9876543221', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
         location: { type: 'Point', coordinates: [77.2090, 28.6339], address: 'Karol Bagh', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Manoj Tiwari', email: 'manoj@tech.com', password: 'password123',
-        phone: '9876543222', role: 'technician', isVerified: true,
+        phone: '9876543222', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
         location: { type: 'Point', coordinates: [72.8557, 19.0550], address: 'Bandra', city: 'Mumbai', state: 'Maharashtra' }
       },
       {
+        name: 'Rajesh Kumar', email: 'rajesh@tech.com', password: 'password123',
+        phone: '9876543223', roles: ['user', 'technician'], activeRole: 'technician',
+        location: { type: 'Point', coordinates: [77.5800, 12.9500], address: 'HSR Layout', city: 'Bangalore', state: 'Karnataka' }
+      },
+      {
+        name: 'Deepak Verma', email: 'deepak@tech.com', password: 'password123',
+        phone: '9876543224', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
+        location: { type: 'Point', coordinates: [77.2300, 28.6500], address: 'Rohini', city: 'New Delhi', state: 'Delhi' }
+      },
+      {
+        name: 'Anita Desai', email: 'anita@tech.com', password: 'password123',
+        phone: '9876543225', roles: ['user', 'technician'], activeRole: 'technician', isVerified: true,
+        location: { type: 'Point', coordinates: [72.8700, 19.0800], address: 'Juhu', city: 'Mumbai', state: 'Maharashtra' }
+      }
+    ]);
         name: 'Rajesh Kumar', email: 'rajesh@tech.com', password: 'password123',
         phone: '9876543223', role: 'technician',
         location: { type: 'Point', coordinates: [77.5800, 12.9500], address: 'HSR Layout', city: 'Bangalore', state: 'Karnataka' }
@@ -181,12 +197,12 @@ const seedData = async () => {
     const toolOwnerUsers = await User.create([
       {
         name: 'Sanjeev Tools', email: 'sanjeev@tools.com', password: 'password123',
-        phone: '9876543230', role: 'toolowner', isVerified: true,
+        phone: '9876543230', roles: ['user', 'toolowner'], activeRole: 'toolowner', isVerified: true,
         location: { type: 'Point', coordinates: [77.2100, 28.6300], address: 'Sadar Bazaar', city: 'New Delhi', state: 'Delhi' }
       },
       {
         name: 'Mumbai Rentals', email: 'mumbai@tools.com', password: 'password123',
-        phone: '9876543231', role: 'toolowner', isVerified: true,
+        phone: '9876543231', roles: ['user', 'toolowner'], activeRole: 'toolowner', isVerified: true,
         location: { type: 'Point', coordinates: [72.8600, 19.0650], address: 'Dadar', city: 'Mumbai', state: 'Maharashtra' }
       }
     ]);

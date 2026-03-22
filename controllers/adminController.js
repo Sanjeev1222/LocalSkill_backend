@@ -21,7 +21,7 @@ const getDashboard = asyncHandler(async (req, res) => {
     pendingBookings,
     verifiedTechnicians
   ] = await Promise.all([
-    User.countDocuments({ role: 'user' }),
+    User.countDocuments({ roles: 'user' }),
     Technician.countDocuments(),
     ToolOwner.countDocuments(),
     Tool.countDocuments(),
@@ -108,7 +108,7 @@ const getUsers = asyncHandler(async (req, res) => {
   const { role, search, page = 1, limit = 20 } = req.query;
   let query = {};
 
-  if (role) query.role = role;
+  if (role) query.roles = role;
   if (search) {
     query.$or = [
       { name: { $regex: search, $options: 'i' } },
@@ -208,7 +208,7 @@ const deleteTool = asyncHandler(async (req, res) => {
 });
 
 const changeUserRole = asyncHandler(async (req, res) => {
-  const { role } = req.body;
+  const { role, action } = req.body;
   const validRoles = ['user', 'technician', 'toolowner', 'admin'];
 
   if (!role || !validRoles.includes(role)) {
@@ -220,13 +220,28 @@ const changeUserRole = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
-  user.role = role;
+  if (action === 'remove') {
+    // Remove a role (but never remove 'user')
+    if (role === 'user') {
+      return res.status(400).json({ success: false, message: 'Cannot remove base user role' });
+    }
+    user.roles = user.roles.filter(r => r !== role);
+    if (user.activeRole === role) {
+      user.activeRole = 'user';
+    }
+  } else {
+    // Add a role
+    if (!user.roles.includes(role)) {
+      user.roles.push(role);
+    }
+  }
+
   await user.save();
 
   res.json({
     success: true,
-    data: { role: user.role },
-    message: `User role changed to ${role}`
+    data: { roles: user.roles },
+    message: action === 'remove' ? `Role '${role}' removed` : `Role '${role}' added`
   });
 });
 

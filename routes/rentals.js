@@ -13,8 +13,8 @@ const {
 
 const { protect, authorize, adminOnly } = require('../middleware/auth');
 
-// User creates rental
-router.post('/', protect, authorize('user'), createRental);
+// Any authenticated user can create a rental (cross-feature: technicians can also rent tools)
+router.post('/', protect, authorize('user', 'technician', 'toolowner'), createRental);
 
 // User rental history
 router.get('/my', protect, getMyRentals);

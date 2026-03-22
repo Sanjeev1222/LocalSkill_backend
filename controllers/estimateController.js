@@ -98,7 +98,7 @@ const getEstimateById = asyncHandler(async (req, res) => {
   const techUser = await Technician.findById(estimate.technician._id || estimate.technician);
   const isOwner = estimate.user._id.toString() === req.user._id.toString();
   const isTech = techUser && techUser.user.toString() === req.user._id.toString();
-  const isAdmin = req.user.role === 'admin';
+  const isAdmin = (req.user.roles || []).includes('admin');
 
   if (!isOwner && !isTech && !isAdmin) {
     return res.status(403).json({ success: false, message: 'Not authorized to view this estimate' });

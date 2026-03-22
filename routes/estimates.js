@@ -12,12 +12,12 @@ const {
 const { protect, authorize } = require('../middleware/auth');
 const { uploadEstimateMedia } = require('../middleware/upload');
 
-// User routes
-router.post('/', protect, authorize('user'), uploadEstimateMedia.array('media', 5), createEstimateRequest);
+// Any authenticated user can request estimates (cross-feature)
+router.post('/', protect, authorize('user', 'technician', 'toolowner'), uploadEstimateMedia.array('media', 5), createEstimateRequest);
 router.get('/my', protect, getMyEstimates);
 router.get('/:id', protect, getEstimateById);
-router.put('/:id/accept', protect, authorize('user'), acceptEstimate);
-router.put('/:id/reject', protect, authorize('user'), rejectEstimate);
+router.put('/:id/accept', protect, authorize('user', 'technician', 'toolowner'), acceptEstimate);
+router.put('/:id/reject', protect, authorize('user', 'technician', 'toolowner'), rejectEstimate);
 
 // Technician routes
 router.get('/technician/requests', protect, authorize('technician'), getTechnicianEstimates);
