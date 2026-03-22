@@ -76,6 +76,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/estimates', require('./routes/estimates'));
 app.use('/api/calls', require('./routes/calls'));
+app.use('/api/settings', require('./routes/settings'));
 
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'API is running' });
