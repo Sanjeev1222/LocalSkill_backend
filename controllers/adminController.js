@@ -76,7 +76,7 @@ const getDashboard = asyncHandler(async (req, res) => {
     .limit(5);
 
   const recentUsers = await User.find()
-    .select('name email role createdAt')
+    .select('name email roles activeRole createdAt')
     .sort({ createdAt: -1 })
     .limit(5);
 

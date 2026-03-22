@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const VideoCall = require('../models/VideoCall');
 const Booking = require('../models/Booking');
+const Technician = require('../models/Technician');
 
 // Track online users
 const onlineUsers = new Map();
@@ -64,20 +65,22 @@ const initializeSocket = (io) => {
       try {
 
         // Role restriction
-        const userRoles = socket.user.roles || [socket.user.role || 'user'];
+        const userRoles = socket.user.roles || ['user'];
         if (userRoles.length === 1 && userRoles[0] === 'toolowner') {
           return socket.emit('call:error', { message: 'Tool owners cannot call' });
         }
 
         // Booking validation
         const booking = await Booking.findById(bookingId);
-        if (!booking || booking.status !== 'accepted') {
-          return socket.emit('call:error', { message: 'Invalid booking' });
+        if (!booking || booking.status !== 'confirmed') {
+          return socket.emit('call:error', { message: 'Invalid booking — must be confirmed' });
         }
 
+        // Compare User IDs (booking.technician is a Technician model ID, not User ID)
+        const tech = await Technician.findById(booking.technician);
         if (
           booking.user.toString() !== userId &&
-          booking.technician.toString() !== userId
+          (!tech || tech.user.toString() !== userId)
         ) {
           return socket.emit('call:error', { message: 'Unauthorized booking access' });
         }

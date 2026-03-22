@@ -29,9 +29,6 @@ const protect = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Account has been suspended' });
     }
 
-    user.lastLogin = new Date();
-    await user.save();
-
     req.user = user;
 
     next();
@@ -46,7 +43,7 @@ const protect = async (req, res, next) => {
 // Role based access
 const authorize = (...roles) => {
   return (req, res, next) => {
-    const userRoles = req.user.roles || [req.user.role || 'user'];
+    const userRoles = req.user.roles || ['user'];
     const hasRole = userRoles.some(r => roles.includes(r));
     if (!hasRole) {
       return res.status(403).json({
@@ -60,7 +57,7 @@ const authorize = (...roles) => {
 
 // Admin shortcut middleware
 const adminOnly = (req, res, next) => {
-  const userRoles = req.user.roles || [req.user.role || 'user'];
+  const userRoles = req.user.roles || ['user'];
   if (!userRoles.includes('admin')) {
     return res.status(403).json({ success: false, message: 'Admin access only' });
   }

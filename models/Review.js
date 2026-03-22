@@ -45,7 +45,9 @@ const reviewSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Prevent duplicate reviews: one review per user per target per transaction
 reviewSchema.index({ user: 1, targetId: 1, booking: 1 }, { unique: true, sparse: true });
+reviewSchema.index({ user: 1, targetId: 1, rental: 1 }, { unique: true, sparse: true });
 reviewSchema.index({ targetId: 1, targetType: 1 });
 
 module.exports = mongoose.model('Review', reviewSchema);

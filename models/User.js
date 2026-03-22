@@ -60,29 +60,9 @@ const userSchema = new mongoose.Schema({
     state: { type: String, default: '' }
   },
   rating: { type: Number, default: 0 },
-totalReviews: { type: Number, default: 0 },
+  totalReviews: { type: Number, default: 0 },
 
-skills: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Skill' }],
-
-bookings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Booking' }],
-
-walletBalance: { type: Number, default: 0 },
-
-availability: {
-  type: String,
-  enum: ['online', 'offline', 'busy'],
-  default: 'offline'
-},
-
-bio: { type: String, default: '' },
-
-experienceYears: { type: Number, default: 0 },
-
-specialization: [{ type: String }],
-
-lastLogin: { type: Date },
-
-profileCompleted: { type: Boolean, default: false },
+  lastLogin: { type: Date },
 
   isActive: { type: Boolean, default: true },
   isBanned: { type: Boolean, default: false },

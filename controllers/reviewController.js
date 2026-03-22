@@ -2,10 +2,49 @@ const Review = require('../models/Review');
 const Technician = require('../models/Technician');
 const Tool = require('../models/Tool');
 const ToolOwner = require('../models/ToolOwner');
+const Booking = require('../models/Booking');
+const Rental = require('../models/Rental');
 const { asyncHandler } = require('../utils/helpers');
 
 const addReview = asyncHandler(async (req, res) => {
   const { targetType, targetId, rating, comment, bookingId, rentalId } = req.body;
+
+  // Prevent self-review
+  if (targetType === 'technician') {
+    const tech = await Technician.findById(targetId);
+    if (tech && tech.user.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'You cannot review yourself' });
+    }
+  } else if (targetType === 'toolowner') {
+    const owner = await ToolOwner.findById(targetId);
+    if (owner && owner.user.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'You cannot review yourself' });
+    }
+  } else if (targetType === 'tool') {
+    const tool = await Tool.findById(targetId).populate('owner');
+    if (tool && tool.owner?.user?.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'You cannot review your own tool' });
+    }
+  }
+
+  // Verify transaction exists and is completed
+  if (bookingId) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking || booking.user.toString() !== req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'Invalid booking reference' });
+    }
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ success: false, message: 'Booking must be completed before reviewing' });
+    }
+  } else if (rentalId) {
+    const rental = await Rental.findById(rentalId);
+    if (!rental || rental.user.toString() !== req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'Invalid rental reference' });
+    }
+    if (rental.status !== 'returned') {
+      return res.status(400).json({ success: false, message: 'Rental must be returned before reviewing' });
+    }
+  }
 
   const modelMap = {
     technician: 'Technician',

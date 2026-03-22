@@ -90,8 +90,11 @@ const addTool = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Tool owner profile not found' });
   }
 
+  // Whitelist fields to prevent mass assignment (rating, totalRentals etc)
+  const { name, description, category, toolType, images, rentPrice, securityDeposit, condition, specifications } = req.body;
+
   const tool = await Tool.create({
-    ...req.body,
+    name, description, category, toolType, images, rentPrice, securityDeposit, condition, specifications,
     owner: toolOwner._id,
     location: req.user.location || req.body.location
   });
@@ -111,7 +114,21 @@ const updateTool = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'Not authorized to update this tool' });
   }
 
-  tool = await Tool.findByIdAndUpdate(req.params.id, req.body, {
+  // Whitelist fields — owners cannot set rating, totalRentals, isAvailable
+  const { name, description, category, toolType, images, rentPrice, securityDeposit, condition, specifications, location } = req.body;
+  const allowedUpdates = {};
+  if (name !== undefined) allowedUpdates.name = name;
+  if (description !== undefined) allowedUpdates.description = description;
+  if (category !== undefined) allowedUpdates.category = category;
+  if (toolType !== undefined) allowedUpdates.toolType = toolType;
+  if (images !== undefined) allowedUpdates.images = images;
+  if (rentPrice !== undefined) allowedUpdates.rentPrice = rentPrice;
+  if (securityDeposit !== undefined) allowedUpdates.securityDeposit = securityDeposit;
+  if (condition !== undefined) allowedUpdates.condition = condition;
+  if (specifications !== undefined) allowedUpdates.specifications = specifications;
+  if (location !== undefined) allowedUpdates.location = location;
+
+  tool = await Tool.findByIdAndUpdate(req.params.id, allowedUpdates, {
     new: true, runValidators: true
   });
 

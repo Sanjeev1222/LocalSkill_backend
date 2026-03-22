@@ -16,6 +16,10 @@ const videoCallSchema = new mongoose.Schema({
     ref: 'Technician',
     required: true
   },
+  booking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking'
+  },
   roomId: {
     type: String,
     required: true,

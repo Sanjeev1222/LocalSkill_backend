@@ -40,6 +40,15 @@ const confirmPayment = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Payment not found' });
   }
 
+  // Only the payment owner can confirm their payment
+  if (payment.user.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ success: false, message: 'Not authorized to confirm this payment' });
+  }
+
+  if (payment.status === 'completed') {
+    return res.status(400).json({ success: false, message: 'Payment is already completed' });
+  }
+
   payment.status = 'completed';
   await payment.save();
 

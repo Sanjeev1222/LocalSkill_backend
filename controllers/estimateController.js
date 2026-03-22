@@ -12,6 +12,11 @@ const createEstimateRequest = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }
 
+  // Prevent self-estimate request
+  if (technician.user.toString() === req.user._id.toString()) {
+    return res.status(400).json({ success: false, message: 'You cannot request an estimate from yourself' });
+  }
+
   if (!technician.availability.isOnline) {
     return res.status(400).json({ success: false, message: 'Technician is currently offline' });
   }

@@ -20,6 +20,25 @@ const createRental = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Tool is not available for rent' });
   }
 
+  // Prevent self-rental (tool owner cannot rent their own tool)
+  if (tool.owner.user.toString() === req.user._id.toString()) {
+    return res.status(400).json({ success: false, message: 'You cannot rent your own tool' });
+  }
+
+  // Prevent overlapping rentals on the same tool
+  if (rentalPeriod?.start && rentalPeriod?.end) {
+    const overlappingRental = await Rental.findOne({
+      tool: toolId,
+      status: { $nin: ['cancelled', 'returned'] },
+      'rentalPeriod.start': { $lt: new Date(rentalPeriod.end) },
+      'rentalPeriod.end': { $gt: new Date(rentalPeriod.start) }
+    });
+
+    if (overlappingRental) {
+      return res.status(400).json({ success: false, message: 'This tool is already booked for the selected dates' });
+    }
+  }
+
   let totalCost = 0;
   if (duration.unit === 'hours') {
     totalCost = tool.rentPrice.hourly * duration.value;
@@ -107,6 +126,12 @@ const updateRentalStatus = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Rental not found' });
   }
 
+  // Verify this tool owner owns this rental
+  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  if (!toolOwner || rental.toolOwner.toString() !== toolOwner._id.toString()) {
+    return res.status(403).json({ success: false, message: 'Not authorized to update this rental' });
+  }
+
   const validTransitions = {
     pending: ['approved', 'cancelled'],
     approved: ['active', 'cancelled'],
@@ -187,6 +212,12 @@ const sendRentalReturnOTP = asyncHandler(async (req, res) => {
 
   if (!rental) {
     return res.status(404).json({ success: false, message: 'Rental not found' });
+  }
+
+  // Verify this tool owner owns this rental
+  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  if (!toolOwner || rental.toolOwner.toString() !== toolOwner._id.toString()) {
+    return res.status(403).json({ success: false, message: 'Not authorized for this rental' });
   }
 
   if (rental.status !== 'active' && rental.status !== 'overdue') {
@@ -273,6 +304,11 @@ const adminCancelRental = asyncHandler(async (req, res) => {
 
   if (rental.status === 'cancelled') {
     return res.status(400).json({ success: false, message: 'Rental is already cancelled' });
+  }
+
+  // If the rental was active, restore tool availability
+  if (rental.status === 'active' || rental.status === 'overdue') {
+    await Tool.findByIdAndUpdate(rental.tool, { isAvailable: true });
   }
 
   rental.status = 'cancelled';

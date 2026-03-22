@@ -15,8 +15,32 @@ const createBooking = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }
 
+  // Prevent self-booking
+  if (technician.user.toString() === req.user._id.toString()) {
+    return res.status(400).json({ success: false, message: 'You cannot book yourself' });
+  }
+
   if (!technician.availability.isOnline) {
     return res.status(400).json({ success: false, message: 'Technician is currently offline' });
+  }
+
+  // Prevent overlapping bookings for same technician on same date/time
+  if (scheduledDate && timeSlot) {
+    const startOfDay = new Date(scheduledDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(scheduledDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingBooking = await Booking.findOne({
+      technician: technicianId,
+      scheduledDate: { $gte: startOfDay, $lte: endOfDay },
+      'timeSlot.start': timeSlot.start,
+      status: { $nin: ['cancelled', 'completed'] }
+    });
+
+    if (existingBooking) {
+      return res.status(400).json({ success: false, message: 'This technician is already booked for that time slot' });
+    }
   }
 
   const estimatedCost = technician.chargeRate;
@@ -99,6 +123,12 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Booking not found' });
   }
 
+  // Verify this technician owns this booking
+  const technician = await Technician.findOne({ user: req.user._id });
+  if (!technician || booking.technician.toString() !== technician._id.toString()) {
+    return res.status(403).json({ success: false, message: 'Not authorized to update this booking' });
+  }
+
   const validTransitions = {
     pending: ['confirmed', 'cancelled'],
     confirmed: ['in_progress', 'cancelled'],
@@ -145,14 +175,22 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
       await technician.save();
     }
 
-    await Payment.create({
-      user: booking.user,
-      type: 'booking',
-      referenceId: booking._id,
-      amount: booking.finalCost,
-      method: booking.paymentMethod,
-      status: 'completed'
-    });
+    // Only create payment record if one doesn't already exist for this booking
+    const existingPayment = await Payment.findOne({ type: 'booking', referenceId: booking._id });
+    if (existingPayment) {
+      existingPayment.status = 'completed';
+      existingPayment.amount = booking.finalCost;
+      await existingPayment.save();
+    } else {
+      await Payment.create({
+        user: booking.user,
+        type: 'booking',
+        referenceId: booking._id,
+        amount: booking.finalCost,
+        method: booking.paymentMethod,
+        status: 'completed'
+      });
+    }
   }
 
   if (status === 'cancelled') {
@@ -183,6 +221,15 @@ const getBooking = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Booking not found' });
   }
 
+  // Ownership check: booking user, technician's user, or admin
+  const isBookingUser = booking.user._id.toString() === req.user._id.toString();
+  const isTechUser = booking.technician?.user?._id?.toString() === req.user._id.toString();
+  const isAdmin = (req.user.roles || []).includes('admin');
+
+  if (!isBookingUser && !isTechUser && !isAdmin) {
+    return res.status(403).json({ success: false, message: 'Not authorized to view this booking' });
+  }
+
   res.json({ success: true, data: booking });
 });
 
@@ -193,6 +240,12 @@ const sendBookingCompleteOTP = asyncHandler(async (req, res) => {
 
   if (!booking) {
     return res.status(404).json({ success: false, message: 'Booking not found' });
+  }
+
+  // Verify this technician owns this booking
+  const technician = await Technician.findOne({ user: req.user._id });
+  if (!technician || booking.technician.toString() !== technician._id.toString()) {
+    return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
   }
 
   if (booking.status !== 'in_progress') {
