@@ -1,6 +1,6 @@
 const User = require('../models/User');
-const Technician = require('../models/Technician');
-const ToolOwner = require('../models/ToolOwner');
+const TechnicianProfile = require('../models/TechnicianProfile');
+const OwnerProfile = require('../models/OwnerProfile');
 const { generateToken, asyncHandler, validatePhone } = require('../utils/helpers');
 
 const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -12,10 +12,10 @@ const buildUserResponse = async (user, token) => {
   const profiles = {};
 
   if (roles.includes('technician')) {
-    profiles.technician = await Technician.findOne({ user: user._id });
+    profiles.technician = await TechnicianProfile.findOne({ userId: user._id });
   }
   if (roles.includes('toolowner')) {
-    profiles.toolOwner = await ToolOwner.findOne({ user: user._id });
+    profiles.toolOwner = await OwnerProfile.findOne({ userId: user._id });
   }
 
   return {
@@ -137,8 +137,8 @@ const register = asyncHandler(async (req, res) => {
   // Create technician profile if role selected
   if (userRoles.includes('technician')) {
     const { skills, experience, chargeRate, chargeType, serviceRadius, bio, availability } = req.body;
-    await Technician.create({
-      user: user._id,
+    await TechnicianProfile.create({
+      userId: user._id,
       skills: skills || [],
       experience: experience || 0,
       chargeRate: chargeRate || 0,
@@ -152,8 +152,8 @@ const register = asyncHandler(async (req, res) => {
   // Create tool owner profile if role selected
   if (userRoles.includes('toolowner')) {
     const { shopName, description } = req.body;
-    await ToolOwner.create({
-      user: user._id,
+    await OwnerProfile.create({
+      userId: user._id,
       shopName: shopName || `${name}'s Shop`,
       description: description || ''
     });
@@ -256,10 +256,10 @@ const addRole = asyncHandler(async (req, res) => {
   // Create the corresponding profile
   if (role === 'technician') {
     const { skills, experience, chargeRate, chargeType, serviceRadius, bio } = req.body;
-    const existing = await Technician.findOne({ user: user._id });
+    const existing = await TechnicianProfile.findOne({ userId: user._id });
     if (!existing) {
-      await Technician.create({
-        user: user._id,
+      await TechnicianProfile.create({
+        userId: user._id,
         skills: skills || [],
         experience: experience || 0,
         chargeRate: chargeRate || 0,
@@ -272,10 +272,10 @@ const addRole = asyncHandler(async (req, res) => {
 
   if (role === 'toolowner') {
     const { shopName, description } = req.body;
-    const existing = await ToolOwner.findOne({ user: user._id });
+    const existing = await OwnerProfile.findOne({ userId: user._id });
     if (!existing) {
-      await ToolOwner.create({
-        user: user._id,
+      await OwnerProfile.create({
+        userId: user._id,
         shopName: shopName || `${user.name}'s Shop`,
         description: description || ''
       });

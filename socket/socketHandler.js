@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const VideoCall = require('../models/VideoCall');
 const Booking = require('../models/Booking');
-const Technician = require('../models/Technician');
+const TechnicianProfile = require('../models/TechnicianProfile');
 
 // Track online users
 const onlineUsers = new Map();
@@ -77,10 +77,10 @@ const initializeSocket = (io) => {
         }
 
         // Compare User IDs (booking.technician is a Technician model ID, not User ID)
-        const tech = await Technician.findById(booking.technician);
+        const tech = await TechnicianProfile.findById(booking.technician);
         if (
           booking.user.toString() !== userId &&
-          (!tech || tech.user.toString() !== userId)
+          (!tech || tech.userId.toString() !== userId)
         ) {
           return socket.emit('call:error', { message: 'Unauthorized booking access' });
         }

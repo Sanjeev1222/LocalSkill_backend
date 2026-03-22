@@ -41,7 +41,7 @@ exports.getCallById = asyncHandler(async (req, res) => {
   const call = await VideoCall.findById(req.params.id)
     .populate('caller', 'name email avatar')
     .populate('receiver', 'name email avatar')
-    .populate('technician', 'skills chargeRate user');
+    .populate('technician', 'skills chargeRate userId');
 
   if (!call) {
     res.status(404);

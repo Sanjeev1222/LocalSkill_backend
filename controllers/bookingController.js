@@ -1,5 +1,5 @@
 const Booking = require('../models/Booking');
-const Technician = require('../models/Technician');
+const TechnicianProfile = require('../models/TechnicianProfile');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
 const { asyncHandler, maskPhone } = require('../utils/helpers');
@@ -14,13 +14,13 @@ const createBooking = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Technician, service, and scheduled date are required' });
   }
 
-  const technician = await Technician.findById(technicianId);
+  const technician = await TechnicianProfile.findById(technicianId);
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }
 
   // Prevent self-booking
-  if (technician.user.toString() === req.user._id.toString()) {
+  if (technician.userId.toString() === req.user._id.toString()) {
     return res.status(400).json({ success: false, message: 'You cannot book yourself' });
   }
 
@@ -65,7 +65,7 @@ const createBooking = asyncHandler(async (req, res) => {
     .populate('user', 'name phone avatar')
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar' }
+      populate: { path: 'userId', select: 'name phone avatar' }
     });
 
   res.status(201).json({ success: true, data: populatedBooking });
@@ -79,7 +79,7 @@ const getMyBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.find(query)
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar location' }
+      populate: { path: 'userId', select: 'name phone avatar location' }
     })
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
@@ -95,7 +95,7 @@ const getMyBookings = asyncHandler(async (req, res) => {
 });
 
 const getTechnicianBookings = asyncHandler(async (req, res) => {
-  const technician = await Technician.findOne({ user: req.user._id });
+  const technician = await TechnicianProfile.findOne({ userId: req.user._id });
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician profile not found' });
   }
@@ -128,7 +128,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
   }
 
   // Verify this technician owns this booking
-  const technician = await Technician.findOne({ user: req.user._id });
+  const technician = await TechnicianProfile.findOne({ userId: req.user._id });
   if (!technician || booking.technician.toString() !== technician._id.toString()) {
     return res.status(403).json({ success: false, message: 'Not authorized to update this booking' });
   }
@@ -172,7 +172,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     booking.completedAt = new Date();
     booking.paymentStatus = booking.paymentMethod === 'cash' ? 'paid' : booking.paymentStatus;
 
-    const technician = await Technician.findById(booking.technician);
+    const technician = await TechnicianProfile.findById(booking.technician);
     if (technician) {
       technician.completedJobs += 1;
       technician.totalEarnings += booking.finalCost;
@@ -207,7 +207,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     .populate('user', 'name phone avatar')
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar' }
+      populate: { path: 'userId', select: 'name phone avatar' }
     });
 
   res.json({ success: true, data: updatedBooking });
@@ -218,7 +218,7 @@ const getBooking = asyncHandler(async (req, res) => {
     .populate('user', 'name phone avatar location')
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar location' }
+      populate: { path: 'userId', select: 'name phone avatar location' }
     });
 
   if (!booking) {
@@ -227,7 +227,7 @@ const getBooking = asyncHandler(async (req, res) => {
 
   // Ownership check: booking user, technician's user, or admin
   const isBookingUser = booking.user._id.toString() === req.user._id.toString();
-  const isTechUser = booking.technician?.user?._id?.toString() === req.user._id.toString();
+  const isTechUser = booking.technician?.userId?._id?.toString() === req.user._id.toString();
   const isAdmin = (req.user.roles || []).includes('admin');
 
   if (!isBookingUser && !isTechUser && !isAdmin) {
@@ -247,7 +247,7 @@ const sendBookingCompleteOTP = asyncHandler(async (req, res) => {
   }
 
   // Verify this technician owns this booking
-  const technician = await Technician.findOne({ user: req.user._id });
+  const technician = await TechnicianProfile.findOne({ userId: req.user._id });
   if (!technician || booking.technician.toString() !== technician._id.toString()) {
     return res.status(403).json({ success: false, message: 'Not authorized for this booking' });
   }
@@ -310,7 +310,7 @@ const getContactInfo = asyncHandler(async (req, res) => {
     });
   }
 
-  const technician = await Technician.findById(technicianId).populate('user', 'name phone email location');
+  const technician = await TechnicianProfile.findById(technicianId).populate('userId', 'name phone email location');
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }
@@ -318,9 +318,9 @@ const getContactInfo = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      phone: technician.user.phone,
-      email: technician.user.email,
-      location: technician.user.location
+      phone: technician.userId.phone,
+      email: technician.userId.email,
+      location: technician.userId.location
     }
   });
 });

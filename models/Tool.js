@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const toolSchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'ToolOwner',
+    ref: 'OwnerProfile',
     required: true
   },
   name: {

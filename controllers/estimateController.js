@@ -1,5 +1,5 @@
 const CostEstimate = require('../models/CostEstimate');
-const Technician = require('../models/Technician');
+const TechnicianProfile = require('../models/TechnicianProfile');
 const Booking = require('../models/Booking');
 const { asyncHandler } = require('../utils/helpers');
 
@@ -7,13 +7,13 @@ const { asyncHandler } = require('../utils/helpers');
 const createEstimateRequest = asyncHandler(async (req, res) => {
   const { technicianId, service, description, address } = req.body;
 
-  const technician = await Technician.findById(technicianId);
+  const technician = await TechnicianProfile.findById(technicianId);
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }
 
   // Prevent self-estimate request
-  if (technician.user.toString() === req.user._id.toString()) {
+  if (technician.userId.toString() === req.user._id.toString()) {
     return res.status(400).json({ success: false, message: 'You cannot request an estimate from yourself' });
   }
 
@@ -55,7 +55,7 @@ const createEstimateRequest = asyncHandler(async (req, res) => {
     .populate('user', 'name phone avatar email')
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar email' }
+      populate: { path: 'userId', select: 'name phone avatar email' }
     });
 
   res.status(201).json({ success: true, data: populated });
@@ -70,7 +70,7 @@ const getMyEstimates = asyncHandler(async (req, res) => {
   const estimates = await CostEstimate.find(query)
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar location' }
+      populate: { path: 'userId', select: 'name phone avatar location' }
     })
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
@@ -91,7 +91,7 @@ const getEstimateById = asyncHandler(async (req, res) => {
     .populate('user', 'name phone avatar email location')
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar email location' }
+      populate: { path: 'userId', select: 'name phone avatar email location' }
     })
     .populate('bookingId');
 
@@ -100,9 +100,9 @@ const getEstimateById = asyncHandler(async (req, res) => {
   }
 
   // Only the user or the technician's user can view
-  const techUser = await Technician.findById(estimate.technician._id || estimate.technician);
+  const techUser = await TechnicianProfile.findById(estimate.technician._id || estimate.technician);
   const isOwner = estimate.user._id.toString() === req.user._id.toString();
-  const isTech = techUser && techUser.user.toString() === req.user._id.toString();
+  const isTech = techUser && techUser.userId.toString() === req.user._id.toString();
   const isAdmin = (req.user.roles || []).includes('admin');
 
   if (!isOwner && !isTech && !isAdmin) {
@@ -114,7 +114,7 @@ const getEstimateById = asyncHandler(async (req, res) => {
 
 // ─── Technician: Get estimate requests assigned to me ───
 const getTechnicianEstimates = asyncHandler(async (req, res) => {
-  const technician = await Technician.findOne({ user: req.user._id });
+  const technician = await TechnicianProfile.findOne({ userId: req.user._id });
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician profile not found' });
   }
@@ -142,7 +142,7 @@ const getTechnicianEstimates = asyncHandler(async (req, res) => {
 const submitEstimate = asyncHandler(async (req, res) => {
   const { serviceCharge, materials, estimatedDuration, notes } = req.body;
 
-  const technician = await Technician.findOne({ user: req.user._id });
+  const technician = await TechnicianProfile.findOne({ userId: req.user._id });
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician profile not found' });
   }
@@ -188,7 +188,7 @@ const submitEstimate = asyncHandler(async (req, res) => {
     .populate('user', 'name phone avatar email')
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar email' }
+      populate: { path: 'userId', select: 'name phone avatar email' }
     });
 
   res.json({ success: true, data: populated, message: 'Estimate sent to user' });
@@ -236,7 +236,7 @@ const acceptEstimate = asyncHandler(async (req, res) => {
     .populate('user', 'name phone avatar')
     .populate({
       path: 'technician',
-      populate: { path: 'user', select: 'name phone avatar' }
+      populate: { path: 'userId', select: 'name phone avatar' }
     });
 
   res.json({

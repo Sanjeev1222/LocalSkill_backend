@@ -18,7 +18,7 @@ const reviewSchema = new mongoose.Schema({
   },
   targetModel: {
     type: String,
-    enum: ['Technician', 'Tool', 'ToolOwner'],
+    enum: ['TechnicianProfile', 'Tool', 'OwnerProfile'],
     required: true
   },
   booking: {

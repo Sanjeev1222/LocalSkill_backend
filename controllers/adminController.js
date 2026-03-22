@@ -1,6 +1,6 @@
 const User = require('../models/User');
-const Technician = require('../models/Technician');
-const ToolOwner = require('../models/ToolOwner');
+const TechnicianProfile = require('../models/TechnicianProfile');
+const OwnerProfile = require('../models/OwnerProfile');
 const Tool = require('../models/Tool');
 const Booking = require('../models/Booking');
 const Rental = require('../models/Rental');
@@ -22,15 +22,15 @@ const getDashboard = asyncHandler(async (req, res) => {
     verifiedTechnicians
   ] = await Promise.all([
     User.countDocuments({ roles: 'user' }),
-    Technician.countDocuments(),
-    ToolOwner.countDocuments(),
+    TechnicianProfile.countDocuments(),
+    OwnerProfile.countDocuments(),
     Tool.countDocuments(),
     Booking.countDocuments(),
     Rental.countDocuments(),
     Booking.countDocuments({ status: 'completed' }),
     Rental.countDocuments({ status: 'returned' }),
     Booking.countDocuments({ status: 'pending' }),
-    Technician.countDocuments({ isVerified: true })
+    TechnicianProfile.countDocuments({ isVerified: true })
   ]);
 
   const bookingRevenue = await Payment.aggregate([
@@ -71,7 +71,7 @@ const getDashboard = asyncHandler(async (req, res) => {
 
   const recentBookings = await Booking.find()
     .populate('user', 'name')
-    .populate({ path: 'technician', populate: { path: 'user', select: 'name' } })
+    .populate({ path: 'technician', populate: { path: 'userId', select: 'name' } })
     .sort({ createdAt: -1 })
     .limit(5);
 
@@ -148,7 +148,7 @@ const toggleBan = asyncHandler(async (req, res) => {
 });
 
 const verifyTechnician = asyncHandler(async (req, res) => {
-  const technician = await Technician.findById(req.params.id);
+  const technician = await TechnicianProfile.findById(req.params.id);
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }
@@ -165,13 +165,13 @@ const verifyTechnician = asyncHandler(async (req, res) => {
 const getAllTechnicians = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
 
-  const technicians = await Technician.find()
-    .populate('user', 'name email phone location isBanned')
+  const technicians = await TechnicianProfile.find()
+    .populate('userId', 'name email phone location isBanned')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
 
-  const total = await Technician.countDocuments();
+  const total = await TechnicianProfile.countDocuments();
 
   res.json({
     success: true,
@@ -184,7 +184,7 @@ const getAllTools = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
 
   const tools = await Tool.find()
-    .populate({ path: 'owner', populate: { path: 'user', select: 'name email' } })
+    .populate({ path: 'owner', populate: { path: 'userId', select: 'name email' } })
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
@@ -246,12 +246,12 @@ const changeUserRole = asyncHandler(async (req, res) => {
 });
 
 const suspendTechnician = asyncHandler(async (req, res) => {
-  const technician = await Technician.findById(req.params.id).populate('user');
+  const technician = await TechnicianProfile.findById(req.params.id).populate('userId');
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }
 
-  const user = await User.findById(technician.user._id);
+  const user = await User.findById(technician.userId._id);
   if (!user) {
     return res.status(404).json({ success: false, message: 'Associated user not found' });
   }

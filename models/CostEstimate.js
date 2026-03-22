@@ -15,7 +15,7 @@ const costEstimateSchema = new mongoose.Schema({
   },
   technician: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Technician',
+    ref: 'TechnicianProfile',
     required: true
   },
   service: {

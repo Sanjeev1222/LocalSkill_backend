@@ -13,7 +13,7 @@ const rentalSchema = new mongoose.Schema({
   },
   toolOwner: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'ToolOwner',
+    ref: 'OwnerProfile',
     required: true
   },
   rentalPeriod: {

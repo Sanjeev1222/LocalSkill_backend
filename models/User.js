@@ -60,6 +60,7 @@ const userSchema = new mongoose.Schema({
     state: { type: String, default: '' },
     pincode: { type: String, default: '' }
   },
+  trustScore: { type: Number, default: 0, min: 0, max: 100 },
   rating: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
 

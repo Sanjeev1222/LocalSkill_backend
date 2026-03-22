@@ -1,5 +1,5 @@
 const Tool = require('../models/Tool');
-const ToolOwner = require('../models/ToolOwner');
+const OwnerProfile = require('../models/OwnerProfile');
 const Rental = require('../models/Rental');
 const { asyncHandler, calculateDistance } = require('../utils/helpers');
 
@@ -39,7 +39,7 @@ const getTools = asyncHandler(async (req, res) => {
   let tools = await Tool.find(query)
     .populate({
       path: 'owner',
-      populate: { path: 'user', select: 'name location' }
+      populate: { path: 'userId', select: 'name location' }
     })
     .sort(sortOption)
     .skip(skip)
@@ -74,7 +74,7 @@ const getTool = asyncHandler(async (req, res) => {
   const tool = await Tool.findById(req.params.id)
     .populate({
       path: 'owner',
-      populate: { path: 'user', select: 'name phone avatar location' }
+      populate: { path: 'userId', select: 'name phone avatar location' }
     });
 
   if (!tool) {
@@ -85,7 +85,7 @@ const getTool = asyncHandler(async (req, res) => {
 });
 
 const addTool = asyncHandler(async (req, res) => {
-  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
   if (!toolOwner) {
     return res.status(404).json({ success: false, message: 'Tool owner profile not found' });
   }
@@ -103,7 +103,7 @@ const addTool = asyncHandler(async (req, res) => {
 });
 
 const updateTool = asyncHandler(async (req, res) => {
-  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
   let tool = await Tool.findById(req.params.id);
 
   if (!tool) {
@@ -136,7 +136,7 @@ const updateTool = asyncHandler(async (req, res) => {
 });
 
 const deleteTool = asyncHandler(async (req, res) => {
-  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
   const tool = await Tool.findById(req.params.id);
 
   if (!tool) {
@@ -152,7 +152,7 @@ const deleteTool = asyncHandler(async (req, res) => {
 });
 
 const getMyTools = asyncHandler(async (req, res) => {
-  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
   if (!toolOwner) {
     return res.status(404).json({ success: false, message: 'Tool owner profile not found' });
   }

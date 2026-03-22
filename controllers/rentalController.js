@@ -1,6 +1,6 @@
 const Rental = require('../models/Rental');
 const Tool = require('../models/Tool');
-const ToolOwner = require('../models/ToolOwner');
+const OwnerProfile = require('../models/OwnerProfile');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
 const { asyncHandler } = require('../utils/helpers');
@@ -21,7 +21,7 @@ const createRental = asyncHandler(async (req, res) => {
   }
 
   // Prevent self-rental (tool owner cannot rent their own tool)
-  if (tool.owner.user.toString() === req.user._id.toString()) {
+  if (tool.owner.userId.toString() === req.user._id.toString()) {
     return res.status(400).json({ success: false, message: 'You cannot rent your own tool' });
   }
 
@@ -62,7 +62,7 @@ const createRental = asyncHandler(async (req, res) => {
     .populate('tool', 'name images rentPrice')
     .populate({
       path: 'toolOwner',
-      populate: { path: 'user', select: 'name phone' }
+      populate: { path: 'userId', select: 'name phone' }
     });
 
   res.status(201).json({ success: true, data: populatedRental });
@@ -77,7 +77,7 @@ const getMyRentals = asyncHandler(async (req, res) => {
     .populate('tool', 'name images rentPrice category')
     .populate({
       path: 'toolOwner',
-      populate: { path: 'user', select: 'name phone' }
+      populate: { path: 'userId', select: 'name phone' }
     })
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
@@ -93,7 +93,7 @@ const getMyRentals = asyncHandler(async (req, res) => {
 });
 
 const getOwnerRentals = asyncHandler(async (req, res) => {
-  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
   if (!toolOwner) {
     return res.status(404).json({ success: false, message: 'Tool owner profile not found' });
   }
@@ -127,7 +127,7 @@ const updateRentalStatus = asyncHandler(async (req, res) => {
   }
 
   // Verify this tool owner owns this rental
-  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
   if (!toolOwner || rental.toolOwner.toString() !== toolOwner._id.toString()) {
     return res.status(403).json({ success: false, message: 'Not authorized to update this rental' });
   }
@@ -175,7 +175,7 @@ const updateRentalStatus = asyncHandler(async (req, res) => {
 
     await Tool.findByIdAndUpdate(rental.tool, { isAvailable: true });
 
-    const toolOwner = await ToolOwner.findById(rental.toolOwner);
+    const toolOwner = await OwnerProfile.findById(rental.toolOwner);
     if (toolOwner) {
       toolOwner.totalRentals += 1;
       toolOwner.totalEarnings += rental.totalCost;
@@ -215,7 +215,7 @@ const sendRentalReturnOTP = asyncHandler(async (req, res) => {
   }
 
   // Verify this tool owner owns this rental
-  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
   if (!toolOwner || rental.toolOwner.toString() !== toolOwner._id.toString()) {
     return res.status(403).json({ success: false, message: 'Not authorized for this rental' });
   }
@@ -241,7 +241,7 @@ const sendRentalReturnOTP = asyncHandler(async (req, res) => {
 });
 
 const getOwnerDashboard = asyncHandler(async (req, res) => {
-  const toolOwner = await ToolOwner.findOne({ user: req.user._id });
+  const toolOwner = await OwnerProfile.findOne({ userId: req.user._id });
   if (!toolOwner) {
     return res.status(404).json({ success: false, message: 'Tool owner profile not found' });
   }

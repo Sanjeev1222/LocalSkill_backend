@@ -1,7 +1,7 @@
 const Review = require('../models/Review');
-const Technician = require('../models/Technician');
+const TechnicianProfile = require('../models/TechnicianProfile');
 const Tool = require('../models/Tool');
-const ToolOwner = require('../models/ToolOwner');
+const OwnerProfile = require('../models/OwnerProfile');
 const Booking = require('../models/Booking');
 const Rental = require('../models/Rental');
 const { asyncHandler } = require('../utils/helpers');
@@ -11,18 +11,18 @@ const addReview = asyncHandler(async (req, res) => {
 
   // Prevent self-review
   if (targetType === 'technician') {
-    const tech = await Technician.findById(targetId);
-    if (tech && tech.user.toString() === req.user._id.toString()) {
+    const tech = await TechnicianProfile.findById(targetId);
+    if (tech && tech.userId.toString() === req.user._id.toString()) {
       return res.status(400).json({ success: false, message: 'You cannot review yourself' });
     }
   } else if (targetType === 'toolowner') {
-    const owner = await ToolOwner.findById(targetId);
-    if (owner && owner.user.toString() === req.user._id.toString()) {
+    const owner = await OwnerProfile.findById(targetId);
+    if (owner && owner.userId.toString() === req.user._id.toString()) {
       return res.status(400).json({ success: false, message: 'You cannot review yourself' });
     }
   } else if (targetType === 'tool') {
     const tool = await Tool.findById(targetId).populate('owner');
-    if (tool && tool.owner?.user?.toString() === req.user._id.toString()) {
+    if (tool && tool.owner?.userId?.toString() === req.user._id.toString()) {
       return res.status(400).json({ success: false, message: 'You cannot review your own tool' });
     }
   }
@@ -47,9 +47,9 @@ const addReview = asyncHandler(async (req, res) => {
   }
 
   const modelMap = {
-    technician: 'Technician',
+    technician: 'TechnicianProfile',
     tool: 'Tool',
-    toolowner: 'ToolOwner'
+    toolowner: 'OwnerProfile'
   };
 
   const review = await Review.create({
@@ -73,13 +73,13 @@ const addReview = asyncHandler(async (req, res) => {
 
   switch (targetType) {
     case 'technician':
-      await Technician.findByIdAndUpdate(targetId, updateData);
+      await TechnicianProfile.findByIdAndUpdate(targetId, updateData);
       break;
     case 'tool':
       await Tool.findByIdAndUpdate(targetId, updateData);
       break;
     case 'toolowner':
-      await ToolOwner.findByIdAndUpdate(targetId, updateData);
+      await OwnerProfile.findByIdAndUpdate(targetId, updateData);
       break;
   }
 

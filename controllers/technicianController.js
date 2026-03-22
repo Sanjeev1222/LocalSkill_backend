@@ -1,4 +1,4 @@
-const Technician = require('../models/Technician');
+const TechnicianProfile = require('../models/TechnicianProfile');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Review = require('../models/Review');
@@ -44,8 +44,8 @@ const getTechnicians = asyncHandler(async (req, res) => {
 
   const skip = (Number(page) - 1) * Number(limit);
 
-  let technicians = await Technician.find(query)
-    .populate('user', 'name email phone avatar location')
+  let technicians = await TechnicianProfile.find(query)
+    .populate('userId', 'name email phone avatar location')
     .sort(sortOption)
     .skip(skip)
     .limit(Number(limit));
@@ -56,8 +56,8 @@ const getTechnicians = asyncHandler(async (req, res) => {
     const maxRadius = Number(radius) || 50;
 
     technicians = technicians.filter(tech => {
-      if (tech.user && tech.user.location && tech.user.location.coordinates) {
-        const [techLng, techLat] = tech.user.location.coordinates;
+      if (tech.userId && tech.userId.location && tech.userId.location.coordinates) {
+        const [techLng, techLat] = tech.userId.location.coordinates;
         const distance = calculateDistance(userLat, userLng, techLat, techLng);
         tech._doc.distance = Math.round(distance * 10) / 10;
         return distance <= maxRadius;
@@ -70,13 +70,13 @@ const getTechnicians = asyncHandler(async (req, res) => {
     }
   }
 
-  const total = await Technician.countDocuments(query);
+  const total = await TechnicianProfile.countDocuments(query);
 
   // Mask phone numbers in public listing
   const maskedTechnicians = technicians.map(t => {
     const obj = t.toObject ? t.toObject() : { ...t._doc };
-    if (obj.user && obj.user.phone) {
-      obj.user.phone = maskPhone(obj.user.phone);
+    if (obj.userId && obj.userId.phone) {
+      obj.userId.phone = maskPhone(obj.userId.phone);
     }
     return obj;
   });
@@ -94,8 +94,8 @@ const getTechnicians = asyncHandler(async (req, res) => {
 });
 
 const getTechnician = asyncHandler(async (req, res) => {
-  const technician = await Technician.findById(req.params.id)
-    .populate('user', 'name email phone avatar location');
+  const technician = await TechnicianProfile.findById(req.params.id)
+    .populate('userId', 'name email phone avatar location');
 
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
@@ -107,8 +107,8 @@ const getTechnician = asyncHandler(async (req, res) => {
     .limit(20);
 
   const techObj = technician.toObject();
-  if (techObj.user && techObj.user.phone) {
-    techObj.user.phone = maskPhone(techObj.user.phone);
+  if (techObj.userId && techObj.userId.phone) {
+    techObj.userId.phone = maskPhone(techObj.userId.phone);
   }
 
   res.json({
@@ -120,11 +120,11 @@ const getTechnician = asyncHandler(async (req, res) => {
 const updateTechnicianProfile = asyncHandler(async (req, res) => {
   const { skills, experience, chargeRate, chargeType, serviceRadius, bio, availability, gallery } = req.body;
 
-  const technician = await Technician.findOneAndUpdate(
-    { user: req.user._id },
+  const technician = await TechnicianProfile.findOneAndUpdate(
+    { userId: req.user._id },
     { skills, experience, chargeRate, chargeType, serviceRadius, bio, availability, gallery },
     { new: true, runValidators: true }
-  ).populate('user', 'name email phone avatar location');
+  ).populate('userId', 'name email phone avatar location');
 
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician profile not found' });
@@ -134,7 +134,7 @@ const updateTechnicianProfile = asyncHandler(async (req, res) => {
 });
 
 const toggleStatus = asyncHandler(async (req, res) => {
-  const technician = await Technician.findOne({ user: req.user._id });
+  const technician = await TechnicianProfile.findOne({ userId: req.user._id });
 
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician profile not found' });
@@ -150,7 +150,7 @@ const toggleStatus = asyncHandler(async (req, res) => {
 });
 
 const getDashboard = asyncHandler(async (req, res) => {
-  const technician = await Technician.findOne({ user: req.user._id });
+  const technician = await TechnicianProfile.findOne({ userId: req.user._id });
 
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician profile not found' });
@@ -206,12 +206,12 @@ const getDashboard = asyncHandler(async (req, res) => {
 });
 
 const adminSuspendTechnician = asyncHandler(async (req, res) => {
-  const technician = await Technician.findById(req.params.id).populate('user');
+  const technician = await TechnicianProfile.findById(req.params.id).populate('userId');
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }
 
-  const user = await User.findById(technician.user._id);
+  const user = await User.findById(technician.userId._id);
   if (!user) {
     return res.status(404).json({ success: false, message: 'Associated user not found' });
   }
@@ -227,7 +227,7 @@ const adminSuspendTechnician = asyncHandler(async (req, res) => {
 });
 
 const adminApproveTechnician = asyncHandler(async (req, res) => {
-  const technician = await Technician.findById(req.params.id);
+  const technician = await TechnicianProfile.findById(req.params.id);
   if (!technician) {
     return res.status(404).json({ success: false, message: 'Technician not found' });
   }

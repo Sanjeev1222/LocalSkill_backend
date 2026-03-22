@@ -2,8 +2,8 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const Technician = require('../models/Technician');
-const ToolOwner = require('../models/ToolOwner');
+const TechnicianProfile = require('../models/TechnicianProfile');
+const OwnerProfile = require('../models/OwnerProfile');
 const Tool = require('../models/Tool');
 const Booking = require('../models/Booking');
 const Rental = require('../models/Rental');
@@ -18,8 +18,8 @@ const seedData = async () => {
     console.log('Connected to MongoDB');
 
     await Promise.all([
-      User.deleteMany({}), Technician.deleteMany({}),
-      ToolOwner.deleteMany({}), Tool.deleteMany({}),
+      User.deleteMany({}), TechnicianProfile.deleteMany({}),
+      OwnerProfile.deleteMany({}), Tool.deleteMany({}),
       Booking.deleteMany({}), Rental.deleteMany({}),
       Review.deleteMany({}), Payment.deleteMany({})
     ]);
@@ -94,25 +94,10 @@ const seedData = async () => {
         location: { type: 'Point', coordinates: [72.8700, 19.0800], address: 'Juhu', city: 'Mumbai', state: 'Maharashtra' }
       }
     ]);
-        name: 'Rajesh Kumar', email: 'rajesh@tech.com', password: 'password123',
-        phone: '9876543223', role: 'technician',
-        location: { type: 'Point', coordinates: [77.5800, 12.9500], address: 'HSR Layout', city: 'Bangalore', state: 'Karnataka' }
-      },
-      {
-        name: 'Deepak Verma', email: 'deepak@tech.com', password: 'password123',
-        phone: '9876543224', role: 'technician', isVerified: true,
-        location: { type: 'Point', coordinates: [77.2300, 28.6500], address: 'Rohini', city: 'New Delhi', state: 'Delhi' }
-      },
-      {
-        name: 'Anita Desai', email: 'anita@tech.com', password: 'password123',
-        phone: '9876543225', role: 'technician', isVerified: true,
-        location: { type: 'Point', coordinates: [72.8700, 19.0800], address: 'Juhu', city: 'Mumbai', state: 'Maharashtra' }
-      }
-    ]);
 
-    const technicians = await Technician.create([
+    const technicians = await TechnicianProfile.create([
       {
-        user: techUsers[0]._id, skills: ['Electrician', 'AC Technician'],
+        userId: techUsers[0]._id, skills: ['Electrician', 'AC Technician'],
         experience: 8, chargeRate: 450, chargeType: 'hourly', serviceRadius: 15,
         bio: 'Experienced electrician with 8+ years in residential and commercial wiring. Certified AC technician.',
         availability: { isOnline: true, slots: [
@@ -126,7 +111,7 @@ const seedData = async () => {
         rating: { average: 4.8, count: 45 }, completedJobs: 156, totalEarnings: 78000, isVerified: true
       },
       {
-        user: techUsers[1]._id, skills: ['Plumber', 'Mason'],
+        userId: techUsers[1]._id, skills: ['Plumber', 'Mason'],
         experience: 12, chargeRate: 540, chargeType: 'hourly', serviceRadius: 20,
         bio: 'Master plumber specializing in pipe fitting, drainage, and bathroom renovations.',
         availability: { isOnline: true, slots: [
@@ -139,7 +124,7 @@ const seedData = async () => {
         rating: { average: 4.6, count: 32 }, completedJobs: 210, totalEarnings: 126000, isVerified: true
       },
       {
-        user: techUsers[2]._id, skills: ['Carpenter', 'Painter', 'Interior Designer'],
+        userId: techUsers[2]._id, skills: ['Carpenter', 'Painter', 'Interior Designer'],
         experience: 15, chargeRate: 720, chargeType: 'per_job', serviceRadius: 25,
         bio: 'Award-winning carpenter and interior designer. Custom furniture and home makeovers.',
         availability: { isOnline: true, slots: [
@@ -153,7 +138,7 @@ const seedData = async () => {
         rating: { average: 4.9, count: 67 }, completedJobs: 89, totalEarnings: 71200, isVerified: true
       },
       {
-        user: techUsers[3]._id, skills: ['Mechanic', 'Welder'],
+        userId: techUsers[3]._id, skills: ['Mechanic', 'Welder'],
         experience: 6, chargeRate: 360, chargeType: 'hourly', serviceRadius: 10,
         bio: 'Automotive mechanic and welding specialist. Door-step vehicle repair service.',
         availability: { isOnline: true, slots: [
@@ -166,7 +151,7 @@ const seedData = async () => {
         rating: { average: 4.3, count: 18 }, completedJobs: 45, totalEarnings: 18000, isVerified: false
       },
       {
-        user: techUsers[4]._id, skills: ['Cleaner', 'Pest Control'],
+        userId: techUsers[4]._id, skills: ['Cleaner', 'Pest Control'],
         experience: 5, chargeRate: 315, chargeType: 'per_job', serviceRadius: 30,
         bio: 'Professional cleaning and pest control services for homes and offices.',
         availability: { isOnline: true, slots: [
@@ -181,7 +166,7 @@ const seedData = async () => {
         rating: { average: 4.5, count: 28 }, completedJobs: 120, totalEarnings: 42000, isVerified: true
       },
       {
-        user: techUsers[5]._id, skills: ['Appliance Repair', 'Electrician'],
+        userId: techUsers[5]._id, skills: ['Appliance Repair', 'Electrician'],
         experience: 10, chargeRate: 495, chargeType: 'hourly', serviceRadius: 20,
         bio: 'Appliance repair expert — washing machines, refrigerators, microwaves, and more.',
         availability: { isOnline: false, slots: [
@@ -207,14 +192,14 @@ const seedData = async () => {
       }
     ]);
 
-    const toolOwners = await ToolOwner.create([
+    const toolOwners = await OwnerProfile.create([
       {
-        user: toolOwnerUsers[0]._id, shopName: 'Sanjeev Power Tools',
+        userId: toolOwnerUsers[0]._id, shopName: 'Sanjeev Power Tools',
         description: 'Premium power tools and construction equipment rentals in Delhi NCR.',
         rating: { average: 4.6, count: 22 }, totalRentals: 85, totalEarnings: 127500, isVerified: true
       },
       {
-        user: toolOwnerUsers[1]._id, shopName: 'Mumbai Tool Hub',
+        userId: toolOwnerUsers[1]._id, shopName: 'Mumbai Tool Hub',
         description: 'Your one-stop shop for all tool rental needs in Mumbai.',
         rating: { average: 4.4, count: 15 }, totalRentals: 62, totalEarnings: 93000, isVerified: true
       }
@@ -316,12 +301,12 @@ const seedData = async () => {
     await Review.create([
       {
         user: users[0]._id, targetType: 'technician', targetId: technicians[1]._id,
-        targetModel: 'Technician', booking: bookings[1]._id,
+        targetModel: 'TechnicianProfile', booking: bookings[1]._id,
         rating: 5, comment: 'Excellent work! Fixed the leaking tap quickly and professionally. Very polite and punctual.'
       },
       {
         user: users[1]._id, targetType: 'technician', targetId: technicians[2]._id,
-        targetModel: 'Technician',
+        targetModel: 'TechnicianProfile',
         rating: 5, comment: 'Amazing carpentry work. The custom bookshelf looks fantastic!'
       },
       {

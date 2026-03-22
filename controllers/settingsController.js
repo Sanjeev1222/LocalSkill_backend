@@ -1,8 +1,8 @@
 const UserSettings = require('../models/UserSettings');
 const TechnicianSettings = require('../models/TechnicianSettings');
 const OwnerSettings = require('../models/OwnerSettings');
-const Technician = require('../models/Technician');
-const ToolOwner = require('../models/ToolOwner');
+const TechnicianProfile = require('../models/TechnicianProfile');
+const OwnerProfile = require('../models/OwnerProfile');
 const { asyncHandler } = require('../utils/helpers');
 
 // ─── Helper: get or create UserSettings ───
@@ -249,8 +249,8 @@ const getTechnicianSettings = asyncHandler(async (req, res) => {
 
   let settings = await TechnicianSettings.findOne({ user: req.user._id });
   if (!settings) {
-    // Seed from existing Technician profile
-    const techProfile = await Technician.findOne({ user: req.user._id });
+    // Seed from existing TechnicianProfile
+    const techProfile = await TechnicianProfile.findOne({ userId: req.user._id });
     settings = await TechnicianSettings.create({
       user: req.user._id,
       skills: techProfile?.skills || [],
@@ -295,7 +295,7 @@ const updateTechnicianSettings = asyncHandler(async (req, res) => {
   if (updates.serviceRadiusKm !== undefined) techSync.serviceRadius = updates.serviceRadiusKm;
 
   if (Object.keys(techSync).length > 0) {
-    await Technician.findOneAndUpdate({ user: req.user._id }, { $set: techSync });
+    await TechnicianProfile.findOneAndUpdate({ userId: req.user._id }, { $set: techSync });
   }
 
   res.json({ success: true, data: settings });
@@ -378,7 +378,7 @@ const getAllSettings = asyncHandler(async (req, res) => {
   if (userRoles.includes('technician')) {
     let techSettings = await TechnicianSettings.findOne({ user: req.user._id });
     if (!techSettings) {
-      const techProfile = await Technician.findOne({ user: req.user._id });
+      const techProfile = await TechnicianProfile.findOne({ userId: req.user._id });
       techSettings = await TechnicianSettings.create({
         user: req.user._id,
         skills: techProfile?.skills || [],

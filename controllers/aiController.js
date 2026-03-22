@@ -1,6 +1,6 @@
-const Technician = require('../models/Technician');
+const TechnicianProfile = require('../models/TechnicianProfile');
 const Tool = require('../models/Tool');
-const ToolOwner = require('../models/ToolOwner');
+const OwnerProfile = require('../models/OwnerProfile');
 const { asyncHandler } = require('../utils/helpers');
 
 // ─── AI Scoring Weights for different priorities ───
@@ -211,7 +211,7 @@ const aiSearchTechnicians = asyncHandler(async (req, res) => {
   // ⭐ LIMIT BEFORE AI SCORING (IMPORTANT)
   pipeline.push({ $limit: 200 });
 
-  const technicians = await Technician.aggregate(pipeline);
+  const technicians = await TechnicianProfile.aggregate(pipeline);
 
   if (!technicians.length) {
     return res.json({
@@ -324,7 +324,7 @@ const aiSearchTools = asyncHandler(async (req, res) => {
   const allTools = await Tool.find(query)
     .populate({
       path: 'owner',
-      populate: { path: 'user', select: 'name location' }
+      populate: { path: 'userId', select: 'name location' }
     });
 
   if (allTools.length === 0) {
