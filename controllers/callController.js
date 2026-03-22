@@ -100,12 +100,6 @@ exports.generateToken = asyncHandler(async (req, res) => {
     throw new Error('This call has already ended');
   }
 
-  // 5. Check join window — skip if booking is in_progress (call is actively running)
-  if (booking.status !== 'in_progress' && !withinJoinWindow(videoCall)) {
-    res.status(400);
-    throw new Error('Call is not within the scheduled window');
-  }
-
   // 6. Generate Agora token
   const channelName = videoCall.channelName;
   const uid = 0;
