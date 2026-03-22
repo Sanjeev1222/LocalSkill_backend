@@ -2,7 +2,10 @@ const User = require('../models/User');
 const TechnicianProfile = require('../models/TechnicianProfile');
 const OwnerProfile = require('../models/OwnerProfile');
 const admin = require('../config/firebaseAdmin');
+const { OAuth2Client } = require('google-auth-library');
 const { generateToken, asyncHandler, validatePhone } = require('../utils/helpers');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ─── Helper: build user response with all profiles ───
 const buildUserResponse = async (user, token) => {
@@ -368,11 +371,25 @@ const addRole = asyncHandler(async (req, res) => {
 
 // ─── Google OAuth Login / Register (multi-role) ───
 const googleAuth = asyncHandler(async (req, res) => {
-  const { googleId, email, name, avatar } = req.body;
+  const { credential } = req.body;
 
-  if (!googleId || !email) {
-    return res.status(400).json({ success: false, message: 'Google ID and email are required' });
+  if (!credential) {
+    return res.status(400).json({ success: false, message: 'Google credential token is required' });
   }
+
+  // Verify the Google ID token server-side — never trust client-decoded data
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    payload = ticket.getPayload();
+  } catch (err) {
+    return res.status(401).json({ success: false, message: 'Invalid Google token' });
+  }
+
+  const { sub: googleId, email, name, picture: avatar } = payload;
 
   let user = await User.findOne({ googleId });
 
