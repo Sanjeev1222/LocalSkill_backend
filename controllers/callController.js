@@ -34,15 +34,15 @@ exports.generateToken = asyncHandler(async (req, res) => {
     throw new Error('Agora credentials not configured');
   }
 
-  // 1. Verify booking exists and is confirmed
+  // 1. Verify booking exists and is in a callable state
   const booking = await Booking.findById(bookingId);
   if (!booking) {
     res.status(404);
     throw new Error('Booking not found');
   }
-  if (booking.status !== 'confirmed') {
+  if (!['confirmed', 'in_progress'].includes(booking.status)) {
     res.status(400);
-    throw new Error('Booking must be confirmed to join a call');
+    throw new Error('Booking must be confirmed or in progress to join a call');
   }
 
   // 2. Verify user is a participant
@@ -52,11 +52,46 @@ exports.generateToken = asyncHandler(async (req, res) => {
     throw new Error('You are not a participant of this booking');
   }
 
-  // 3. Find or verify video call record
-  const videoCall = await VideoCall.findOne({ bookingId });
+  // 3. Find VideoCall record — auto-create if missing (e.g. legacy bookings)
+  let videoCall = await VideoCall.findOne({ bookingId });
   if (!videoCall) {
-    res.status(404);
-    throw new Error('Video call not scheduled for this booking');
+    // Build time window from booking schedule, defaulting to a 2-hour window now
+    const startTime = booking.scheduledDate
+      ? (() => {
+          const d = new Date(booking.scheduledDate);
+          if (booking.timeSlot?.start) {
+            const [h, m] = booking.timeSlot.start.split(':');
+            d.setHours(Number(h), Number(m), 0, 0);
+          }
+          return d;
+        })()
+      : new Date();
+    const endTime = booking.scheduledDate
+      ? (() => {
+          const d = new Date(booking.scheduledDate);
+          if (booking.timeSlot?.end) {
+            const [h, m] = booking.timeSlot.end.split(':');
+            d.setHours(Number(h), Number(m), 0, 0);
+          } else {
+            d.setHours(d.getHours() + 2);
+          }
+          return d;
+        })()
+      : new Date(Date.now() + 2 * 60 * 60 * 1000);
+
+    // Collect participant userIds
+    const tech = await TechnicianProfile.findById(booking.technician);
+    const participants = [booking.user];
+    if (tech?.userId) participants.push(tech.userId);
+
+    videoCall = await VideoCall.create({
+      bookingId,
+      channelName: `booking_${bookingId}`,
+      participants,
+      startTime,
+      endTime,
+      status: 'scheduled'
+    });
   }
 
   // 4. Check call isn't already ended
@@ -65,15 +100,15 @@ exports.generateToken = asyncHandler(async (req, res) => {
     throw new Error('This call has already ended');
   }
 
-  // 5. Check join window
-  if (!withinJoinWindow(videoCall)) {
+  // 5. Check join window — skip if booking is in_progress (call is actively running)
+  if (booking.status !== 'in_progress' && !withinJoinWindow(videoCall)) {
     res.status(400);
     throw new Error('Call is not within the scheduled window');
   }
 
   // 6. Generate Agora token
   const channelName = videoCall.channelName;
-  const uid = 0; // Use 0 for string uid mode — Agora will assign
+  const uid = 0;
   const role = RtcRole.PUBLISHER;
   const tokenExpiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour
 
@@ -81,7 +116,6 @@ exports.generateToken = asyncHandler(async (req, res) => {
     APP_ID, APP_CERTIFICATE, channelName, uid, role, tokenExpiry
   );
 
-  // Mark as ongoing if scheduled
   if (videoCall.status === 'scheduled') {
     videoCall.status = 'ongoing';
     await videoCall.save();
