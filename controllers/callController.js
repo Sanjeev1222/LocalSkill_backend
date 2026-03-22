@@ -53,46 +53,48 @@ exports.generateToken = asyncHandler(async (req, res) => {
   }
 
   // 3. Find VideoCall record — auto-create if missing (e.g. legacy bookings)
-  let videoCall = await VideoCall.findOne({ bookingId });
-  if (!videoCall) {
-    // Build time window from booking schedule, defaulting to a 2-hour window now
-    const startTime = booking.scheduledDate
-      ? (() => {
-          const d = new Date(booking.scheduledDate);
-          if (booking.timeSlot?.start) {
-            const [h, m] = booking.timeSlot.start.split(':');
-            d.setHours(Number(h), Number(m), 0, 0);
-          }
-          return d;
-        })()
-      : new Date();
-    const endTime = booking.scheduledDate
-      ? (() => {
-          const d = new Date(booking.scheduledDate);
-          if (booking.timeSlot?.end) {
-            const [h, m] = booking.timeSlot.end.split(':');
-            d.setHours(Number(h), Number(m), 0, 0);
-          } else {
-            d.setHours(d.getHours() + 2);
-          }
-          return d;
-        })()
-      : new Date(Date.now() + 2 * 60 * 60 * 1000);
+  // 3. Find VideoCall record — upsert if missing (handles race conditions + legacy bookings)
+  const startTime = booking.scheduledDate
+    ? (() => {
+        const d = new Date(booking.scheduledDate);
+        if (booking.timeSlot?.start) {
+          const [h, m] = booking.timeSlot.start.split(':');
+          d.setHours(Number(h), Number(m), 0, 0);
+        }
+        return d;
+      })()
+    : new Date();
+  const endTime = booking.scheduledDate
+    ? (() => {
+        const d = new Date(booking.scheduledDate);
+        if (booking.timeSlot?.end) {
+          const [h, m] = booking.timeSlot.end.split(':');
+          d.setHours(Number(h), Number(m), 0, 0);
+        } else {
+          d.setHours(d.getHours() + 2);
+        }
+        return d;
+      })()
+    : new Date(Date.now() + 2 * 60 * 60 * 1000);
 
-    // Collect participant userIds
-    const tech = await TechnicianProfile.findById(booking.technician);
-    const participants = [booking.user];
-    if (tech?.userId) participants.push(tech.userId);
+  const tech = await TechnicianProfile.findById(booking.technician);
+  const participants = [booking.user];
+  if (tech?.userId) participants.push(tech.userId);
 
-    videoCall = await VideoCall.create({
-      bookingId,
-      channelName: `booking_${bookingId}`,
-      participants,
-      startTime,
-      endTime,
-      status: 'scheduled'
-    });
-  }
+  let videoCall = await VideoCall.findOneAndUpdate(
+    { bookingId },
+    {
+      $setOnInsert: {
+        bookingId,
+        channelName: `booking_${bookingId}`,
+        participants,
+        startTime,
+        endTime,
+        status: 'scheduled'
+      }
+    },
+    { upsert: true, new: true }
+  );
 
   // 4. Check call isn't already ended
   if (videoCall.status === 'ended') {
