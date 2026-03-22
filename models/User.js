@@ -39,12 +39,12 @@ const userSchema = new mongoose.Schema({
 
   roles: {
     type: [String],
-    enum: ['USER', 'TECHNICIAN', 'TOOL_OWNER', 'ADMIN'],
+    enum: ['USER', 'TECHNICIAN', 'TOOL_OWNER', 'ADMIN', 'user', 'technician', 'toolowner', 'tool_owner', 'admin'],
     default: ['USER']
   },
   activeRole: {
     type: String,
-    enum: ['USER', 'TECHNICIAN', 'TOOL_OWNER', 'ADMIN'],
+    enum: ['USER', 'TECHNICIAN', 'TOOL_OWNER', 'ADMIN', 'user', 'technician', 'toolowner', 'tool_owner', 'admin'],
     default: 'USER'
   },
 
@@ -85,6 +85,19 @@ userSchema.index({ roles: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ isBanned: 1 });
 userSchema.index({ 'geoLocation': '2dsphere' });
+
+const ROLE_MAP = { 'user': 'USER', 'technician': 'TECHNICIAN', 'toolowner': 'TOOL_OWNER', 'tool_owner': 'TOOL_OWNER', 'admin': 'ADMIN' };
+
+userSchema.pre('save', function(next) {
+  // Auto-normalize roles to CONSTANT_CASE
+  if (this.isModified('roles')) {
+    this.roles = this.roles.map(r => ROLE_MAP[r] || r);
+  }
+  if (this.isModified('activeRole') && this.activeRole) {
+    this.activeRole = ROLE_MAP[this.activeRole] || this.activeRole;
+  }
+  next();
+});
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
