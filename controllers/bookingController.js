@@ -2,6 +2,7 @@ const Booking = require('../models/Booking');
 const TechnicianProfile = require('../models/TechnicianProfile');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
+const VideoCall = require('../models/VideoCall');
 const { asyncHandler, maskPhone } = require('../utils/helpers');
 
 const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -147,6 +148,45 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
   }
 
   booking.status = status;
+
+  // ─── Create VideoCall when booking is confirmed ───
+  if (status === 'confirmed') {
+    const existingCall = await VideoCall.findOne({ bookingId: booking._id });
+    if (!existingCall) {
+      const tech = await TechnicianProfile.findById(booking.technician);
+      const techUserId = tech ? tech.userId : null;
+
+      // Build time window from booking schedule
+      const schedDate = new Date(booking.scheduledDate);
+      const [startH, startM] = (booking.timeSlot?.start || '09:00').split(':').map(Number);
+      const [endH, endM] = (booking.timeSlot?.end || '18:00').split(':').map(Number);
+
+      const startTime = new Date(schedDate);
+      startTime.setHours(startH, startM, 0, 0);
+      const endTime = new Date(schedDate);
+      endTime.setHours(endH, endM, 0, 0);
+
+      const participants = [booking.user];
+      if (techUserId) participants.push(techUserId);
+
+      await VideoCall.create({
+        bookingId: booking._id,
+        channelName: `booking_${booking._id}`,
+        participants,
+        startTime,
+        endTime,
+        status: 'scheduled'
+      });
+    }
+  }
+
+  // ─── End VideoCall when booking is completed or cancelled ───
+  if (status === 'completed' || status === 'cancelled') {
+    await VideoCall.findOneAndUpdate(
+      { bookingId: booking._id, status: { $ne: 'ended' } },
+      { status: 'ended' }
+    );
+  }
 
   if (status === 'completed') {
     // Verify OTP before completing

@@ -1,46 +1,44 @@
 const mongoose = require('mongoose');
 
 const videoCallSchema = new mongoose.Schema({
-  caller: {
+  bookingId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'Booking',
+    required: true,
+    unique: true
   },
-  receiver: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  technician: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'TechnicianProfile',
-    required: true
-  },
-  booking: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking'
-  },
-  roomId: {
+  channelName: {
     type: String,
     required: true,
     unique: true
   },
+  participants: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  startTime: {
+    type: Date,
+    required: true
+  },
+  endTime: {
+    type: Date,
+    required: true
+  },
   status: {
     type: String,
-    enum: ['ringing', 'active', 'ended', 'missed', 'rejected'],
-    default: 'ringing'
+    enum: ['scheduled', 'ongoing', 'ended'],
+    default: 'scheduled'
   },
   duration: {
     type: Number,
     default: 0
-  },
-  startedAt: { type: Date },
-  endedAt: { type: Date }
+  }
 }, {
   timestamps: true
 });
 
-videoCallSchema.index({ caller: 1, createdAt: -1 });
-videoCallSchema.index({ receiver: 1, createdAt: -1 });
+videoCallSchema.index({ bookingId: 1 });
+videoCallSchema.index({ status: 1 });
+videoCallSchema.index({ 'participants': 1 });
 
 module.exports = mongoose.model('VideoCall', videoCallSchema);

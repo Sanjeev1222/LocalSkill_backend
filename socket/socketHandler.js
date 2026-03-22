@@ -1,22 +1,9 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const VideoCall = require('../models/VideoCall');
-const Booking = require('../models/Booking');
-const TechnicianProfile = require('../models/TechnicianProfile');
 
 // Track online users
 const onlineUsers = new Map();
-
-// ⭐ Helper: Room Authorization
-const authorizeRoom = async (callId, userId) => {
-  const call = await VideoCall.findById(callId);
-  if (!call) return false;
-
-  return (
-    call.caller.toString() === userId ||
-    call.receiver.toString() === userId
-  );
-};
 
 const initializeSocket = (io) => {
 
@@ -55,175 +42,41 @@ const initializeSocket = (io) => {
     socket.join(userId);
 
     // =========================
-    // 📞 CALL INITIATE
+    // 📞 JOIN CALL ROOM (Agora-based)
     // =========================
-    socket.on('call:initiate', async (data) => {
+    socket.on('call:join', async ({ bookingId }) => {
       if (++socket.eventCount > 40) return;
-
-      const { receiverId, technicianId, bookingId, callerName, callerAvatar } = data;
 
       try {
+        const videoCall = await VideoCall.findOne({ bookingId });
+        if (!videoCall) return socket.emit('call:error', { message: 'No call found' });
 
-        // Role restriction
-        const userRoles = socket.user.roles || ['USER'];
-        if (userRoles.length === 1 && userRoles[0] === 'TOOL_OWNER') {
-          return socket.emit('call:error', { message: 'Tool owners cannot call' });
-        }
+        const isParticipant = videoCall.participants.some(p => p.toString() === userId);
+        if (!isParticipant) return socket.emit('call:error', { message: 'Not authorized' });
 
-        // Booking validation
-        const booking = await Booking.findById(bookingId);
-        if (!booking || booking.status !== 'confirmed') {
-          return socket.emit('call:error', { message: 'Invalid booking — must be confirmed' });
-        }
+        const room = `call_${bookingId}`;
+        socket.join(room);
 
-        // Compare User IDs (booking.technician is a Technician model ID, not User ID)
-        const tech = await TechnicianProfile.findById(booking.technician);
-        if (
-          booking.user.toString() !== userId &&
-          (!tech || tech.userId.toString() !== userId)
-        ) {
-          return socket.emit('call:error', { message: 'Unauthorized booking access' });
-        }
-
-        const roomId = `call_${bookingId}`;
-
-        const call = await VideoCall.create({
-          caller: userId,
-          receiver: receiverId,
-          technician: technicianId,
-          booking: bookingId,
-          roomId,
-          status: 'ringing'
+        // Notify other participant
+        socket.to(room).emit('call:user-joined', {
+          userId,
+          name: socket.user.name,
+          avatar: socket.user.avatar
         });
-
-        socket.join(roomId);
-
-        io.to(receiverId).emit('call:incoming', {
-          callId: call._id.toString(),
-          roomId,
-          callerId: userId,
-          callerName: callerName || socket.user.name,
-          callerAvatar: callerAvatar || '',
-          technicianId
-        });
-
-        socket.emit('call:initiated', {
-          callId: call._id.toString(),
-          roomId
-        });
-
-        // Auto miss
-        setTimeout(async () => {
-          const updated = await VideoCall.findById(call._id);
-          if (updated && updated.status === 'ringing') {
-            updated.status = 'missed';
-            await updated.save();
-            io.to(roomId).emit('call:missed', { callId: call._id.toString() });
-          }
-        }, 60000);
-
       } catch (err) {
-        socket.emit('call:error', { message: 'Call initiation failed' });
+        socket.emit('call:error', { message: 'Failed to join call room' });
       }
     });
 
     // =========================
-    // ✅ CALL ACCEPT
+    // 🔚 LEAVE / END CALL
     // =========================
-    socket.on('call:accept', async ({ callId, roomId }) => {
+    socket.on('call:leave', async ({ bookingId }) => {
       if (++socket.eventCount > 40) return;
 
-      const allowed = await authorizeRoom(callId, userId);
-      if (!allowed) return;
-
-      const call = await VideoCall.findById(callId);
-      if (!call || call.status !== 'ringing') return;
-
-      call.status = 'active';
-      call.startedAt = new Date();
-      await call.save();
-
-      socket.join(roomId);
-
-      io.to(roomId).emit('call:accepted', { callId });
-    });
-
-    // =========================
-    // ❌ CALL REJECT
-    // =========================
-    socket.on('call:reject', async ({ callId, roomId }) => {
-      if (++socket.eventCount > 40) return;
-
-      const allowed = await authorizeRoom(callId, userId);
-      if (!allowed) return;
-
-      const call = await VideoCall.findById(callId);
-      if (!call) return;
-
-      call.status = 'rejected';
-      await call.save();
-
-      io.to(roomId).emit('call:rejected', { callId });
-    });
-
-    // =========================
-    // 🔚 CALL END
-    // =========================
-    socket.on('call:end', async ({ callId, roomId }) => {
-      if (++socket.eventCount > 40) return;
-
-      const allowed = await authorizeRoom(callId, userId);
-      if (!allowed) return;
-
-      const call = await VideoCall.findById(callId);
-      if (!call) return;
-
-      call.status = 'ended';
-      call.endedAt = new Date();
-      if (call.startedAt) {
-        call.duration = Math.round((call.endedAt - call.startedAt) / 1000);
-      }
-      await call.save();
-
-      io.to(roomId).emit('call:ended', { callId, duration: call.duration });
-    });
-
-    // =========================
-    // 🌐 WEBRTC SIGNALING
-    // =========================
-    socket.on('webrtc:offer', async ({ callId, roomId, offer }) => {
-      if (++socket.eventCount > 40) return;
-      const allowed = await authorizeRoom(callId, userId);
-      if (!allowed) return;
-
-      socket.to(roomId).emit('webrtc:offer', { offer, from: userId });
-    });
-
-    socket.on('webrtc:answer', async ({ callId, roomId, answer }) => {
-      if (++socket.eventCount > 40) return;
-      const allowed = await authorizeRoom(callId, userId);
-      if (!allowed) return;
-
-      socket.to(roomId).emit('webrtc:answer', { answer, from: userId });
-    });
-
-    socket.on('webrtc:ice-candidate', async ({ callId, roomId, candidate }) => {
-      if (++socket.eventCount > 40) return;
-      const allowed = await authorizeRoom(callId, userId);
-      if (!allowed) return;
-
-      socket.to(roomId).emit('webrtc:ice-candidate', { candidate, from: userId });
-    });
-
-    // =========================
-    // 🔊 TOGGLE
-    // =========================
-    socket.on('call:toggle-audio', ({ roomId, enabled }) => {
-      socket.to(roomId).emit('call:peer-toggle-audio', { userId, enabled });
-    });
-
-    socket.on('call:toggle-video', ({ roomId, enabled }) => {
-      socket.to(roomId).emit('call:peer-toggle-video', { userId, enabled });
+      const room = `call_${bookingId}`;
+      socket.to(room).emit('call:user-left', { userId, name: socket.user.name });
+      socket.leave(room);
     });
 
     // =========================

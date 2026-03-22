@@ -9,6 +9,7 @@
     "seed": "node seeds/seed.js"
   },
   "dependencies": {
+    "agora-access-token": "^2.0.4",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
