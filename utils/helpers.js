@@ -41,31 +41,4 @@ const maskPhone = (phone) => {
   return cleaned.slice(0, 2) + '****' + cleaned.slice(-2);
 };
 
-// ─── OTP Store (in-memory for demo, use Redis in production) ───
-const otpStore = new Map();
-
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
-const storeOTP = (key, purpose = 'verification') => {
-  const otp = generateOTP();
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
-  otpStore.set(`${key}_${purpose}`, { otp, expiresAt });
-  return otp;
-};
-
-const verifyOTP = (key, otp, purpose = 'verification') => {
-  const storeKey = `${key}_${purpose}`;
-  const stored = otpStore.get(storeKey);
-  if (!stored) return { valid: false, message: 'OTP not found or expired. Please request a new one.' };
-  if (Date.now() > stored.expiresAt) {
-    otpStore.delete(storeKey);
-    return { valid: false, message: 'OTP has expired. Please request a new one.' };
-  }
-  if (stored.otp !== otp) return { valid: false, message: 'Invalid OTP. Please try again.' };
-  otpStore.delete(storeKey);
-  return { valid: true };
-};
-
-module.exports = { generateToken, calculateDistance, asyncHandler, validatePhone, maskPhone, generateOTP, storeOTP, verifyOTP };
+module.exports = { generateToken, calculateDistance, asyncHandler, validatePhone, maskPhone };
