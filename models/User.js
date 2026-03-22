@@ -57,7 +57,8 @@ const userSchema = new mongoose.Schema({
     coordinates: { type: [Number], default: [0, 0] },
     address: { type: String, default: '' },
     city: { type: String, default: '' },
-    state: { type: String, default: '' }
+    state: { type: String, default: '' },
+    pincode: { type: String, default: '' }
   },
   rating: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
@@ -67,7 +68,13 @@ const userSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   isBanned: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
-  darkMode: { type: Boolean, default: false }
+  darkMode: { type: Boolean, default: false },
+
+  privacySettings: {
+    showPhone: { type: String, enum: ['everyone', 'booked', 'nobody'], default: 'booked' },
+    showEmail: { type: String, enum: ['everyone', 'booked', 'nobody'], default: 'booked' },
+    showLocation: { type: String, enum: ['everyone', 'booked', 'nobody'], default: 'everyone' }
+  }
 
   
 }, {

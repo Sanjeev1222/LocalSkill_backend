@@ -2,7 +2,7 @@ const Technician = require('../models/Technician');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Review = require('../models/Review');
-const { asyncHandler, calculateDistance } = require('../utils/helpers');
+const { asyncHandler, calculateDistance, maskPhone } = require('../utils/helpers');
 
 const getTechnicians = asyncHandler(async (req, res) => {
   const {
@@ -72,9 +72,18 @@ const getTechnicians = asyncHandler(async (req, res) => {
 
   const total = await Technician.countDocuments(query);
 
+  // Mask phone numbers in public listing
+  const maskedTechnicians = technicians.map(t => {
+    const obj = t.toObject ? t.toObject() : { ...t._doc };
+    if (obj.user && obj.user.phone) {
+      obj.user.phone = maskPhone(obj.user.phone);
+    }
+    return obj;
+  });
+
   res.json({
     success: true,
-    data: technicians,
+    data: maskedTechnicians,
     pagination: {
       page: Number(page),
       limit: Number(limit),
@@ -97,9 +106,14 @@ const getTechnician = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .limit(20);
 
+  const techObj = technician.toObject();
+  if (techObj.user && techObj.user.phone) {
+    techObj.user.phone = maskPhone(techObj.user.phone);
+  }
+
   res.json({
     success: true,
-    data: { ...technician.toObject(), reviews }
+    data: { ...techObj, reviews }
   });
 });
 

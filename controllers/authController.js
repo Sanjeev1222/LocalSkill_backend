@@ -38,7 +38,11 @@ const buildUserResponse = async (user, token) => {
 
 // ─── Send OTP for phone verification (registration) ───
 const sendRegisterOTP = asyncHandler(async (req, res) => {
-  const { phone } = req.body;
+  const { phone, name, email } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({ success: false, message: 'Please complete the registration form before verifying phone' });
+  }
 
   const phoneCheck = validatePhone(phone);
   if (!phoneCheck.valid) {
@@ -75,6 +79,24 @@ const verifyRegisterOTP = asyncHandler(async (req, res) => {
 const register = asyncHandler(async (req, res) => {
   const { name, email, password, phone, role, roles: requestedRoles, location } = req.body;
 
+  // Input validation
+  if (!name || !email || !password) {
+    return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
+  }
+
+  if (name.length > 50) {
+    return res.status(400).json({ success: false, message: 'Name cannot exceed 50 characters' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+  }
+
+  const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ success: false, message: 'Please enter a valid email address' });
+  }
+
   if (phone) {
     const phoneCheck = validatePhone(phone);
     if (!phoneCheck.valid) {
@@ -90,7 +112,8 @@ const register = asyncHandler(async (req, res) => {
   // Build roles array — everyone gets 'user' + any additional role
   let userRoles = ['user'];
   const selectedRole = role || 'user';
-  if (selectedRole !== 'user' && !userRoles.includes(selectedRole)) {
+  // Prevent admin role self-assignment during registration
+  if (['technician', 'toolowner'].includes(selectedRole) && !userRoles.includes(selectedRole)) {
     userRoles.push(selectedRole);
   }
   // Also support explicit roles array from frontend

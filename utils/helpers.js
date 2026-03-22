@@ -33,6 +33,14 @@ const validatePhone = (phone) => {
   return { valid: true, cleaned };
 };
 
+// ─── Phone number masking (privacy) ───
+const maskPhone = (phone) => {
+  if (!phone) return '';
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length < 4) return '****';
+  return cleaned.slice(0, 2) + '****' + cleaned.slice(-2);
+};
+
 // ─── OTP Store (in-memory for demo, use Redis in production) ───
 const otpStore = new Map();
 
@@ -60,4 +68,4 @@ const verifyOTP = (key, otp, purpose = 'verification') => {
   return { valid: true };
 };
 
-module.exports = { generateToken, calculateDistance, asyncHandler, validatePhone, generateOTP, storeOTP, verifyOTP };
+module.exports = { generateToken, calculateDistance, asyncHandler, validatePhone, maskPhone, generateOTP, storeOTP, verifyOTP };

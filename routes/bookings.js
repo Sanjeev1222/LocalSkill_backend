@@ -8,7 +8,8 @@ const {
   updateBookingStatus,
   getBooking,
   sendBookingCompleteOTP,
-  adminCancelBooking
+  adminCancelBooking,
+  getContactInfo
 } = require('../controllers/bookingController');
 
 const { protect, authorize, adminOnly } = require('../middleware/auth');
@@ -30,6 +31,9 @@ router.put('/:id/status', protect, authorize('technician'), updateBookingStatus)
 
 // Technician send OTP
 router.post('/:id/send-complete-otp', protect, authorize('technician'), sendBookingCompleteOTP);
+
+// Get technician contact info (requires active booking)
+router.get('/contact/:technicianId', protect, getContactInfo);
 
 // Admin cancel booking
 router.delete('/:id', protect, adminOnly, adminCancelBooking);

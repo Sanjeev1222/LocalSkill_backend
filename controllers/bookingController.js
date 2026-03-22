@@ -2,13 +2,17 @@ const Booking = require('../models/Booking');
 const Technician = require('../models/Technician');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
-const { asyncHandler } = require('../utils/helpers');
+const { asyncHandler, maskPhone } = require('../utils/helpers');
 
 const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
 
 const createBooking = asyncHandler(async (req, res) => {
   const { technicianId, service, description, scheduledDate, timeSlot, location, paymentMethod } = req.body;
+
+  if (!technicianId || !service || !scheduledDate) {
+    return res.status(400).json({ success: false, message: 'Technician, service, and scheduled date are required' });
+  }
 
   const technician = await Technician.findById(technicianId);
   if (!technician) {
@@ -289,6 +293,38 @@ const adminCancelBooking = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── Check if user has active booking with technician → reveal contact ───
+const getContactInfo = asyncHandler(async (req, res) => {
+  const { technicianId } = req.params;
+
+  const activeBooking = await Booking.findOne({
+    user: req.user._id,
+    technician: technicianId,
+    status: { $in: ['confirmed', 'in_progress'] }
+  });
+
+  if (!activeBooking) {
+    return res.status(403).json({
+      success: false,
+      message: 'You need an active booking with this technician to view contact info'
+    });
+  }
+
+  const technician = await Technician.findById(technicianId).populate('user', 'name phone email location');
+  if (!technician) {
+    return res.status(404).json({ success: false, message: 'Technician not found' });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      phone: technician.user.phone,
+      email: technician.user.email,
+      location: technician.user.location
+    }
+  });
+});
+
 module.exports = {
   createBooking,
   getMyBookings,
@@ -296,5 +332,6 @@ module.exports = {
   updateBookingStatus,
   getBooking,
   sendBookingCompleteOTP,
-  adminCancelBooking
+  adminCancelBooking,
+  getContactInfo
 };
