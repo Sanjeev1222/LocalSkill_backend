@@ -370,7 +370,7 @@ const getAllBookings = asyncHandler(async (req, res) => {
 
   const bookings = await Booking.find(query)
     .populate('user', 'name email')
-    .populate({ path: 'technician', populate: { path: 'user', select: 'name email' } })
+    .populate({ path: 'technician', populate: { path: 'userId', select: 'name email' } })
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
@@ -392,7 +392,7 @@ const getAllRentals = asyncHandler(async (req, res) => {
   const rentals = await Rental.find(query)
     .populate('user', 'name email')
     .populate('tool', 'name category')
-    .populate({ path: 'toolOwner', populate: { path: 'user', select: 'name email' } })
+    .populate({ path: 'toolOwner', populate: { path: 'userId', select: 'name email' } })
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
