@@ -65,13 +65,22 @@ const firebaseLogin = asyncHandler(async (req, res) => {
   const {
     name, email, password, role, roles: requestedRoles,
     geoLocation, address, skills, experienceYears, hourlyRate,
-    chargeType, serviceRadiusKm, bio, businessName, description
+    chargeType, serviceRadiusKm, bio, businessName, description,
+    isRegistration
   } = req.body;
 
   let user = await User.findOne({ $or: [{ firebaseUid }, { phone }] });
   let isNewUser = false;
 
   if (user) {
+    // If this is a registration attempt but user already exists, reject
+    if (isRegistration) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this phone number already exists. Please login instead.'
+      });
+    }
+
     if (user.isBanned) {
       return res.status(403).json({ success: false, message: 'Account has been suspended' });
     }
