@@ -62,6 +62,12 @@ const firebaseLogin = asyncHandler(async (req, res) => {
   const digits = rawPhone.replace(/\D/g, '');
   const phone = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
 
+  const {
+    name, email, password, role, roles: requestedRoles,
+    geoLocation, address, skills, experienceYears, hourlyRate,
+    chargeType, serviceRadiusKm, bio, businessName, description
+  } = req.body;
+
   let user = await User.findOne({ $or: [{ firebaseUid }, { phone }] });
   let isNewUser = false;
 
@@ -77,11 +83,6 @@ const firebaseLogin = asyncHandler(async (req, res) => {
     }
   } else {
     isNewUser = true;
-    const {
-      name, email, password, role, roles: requestedRoles,
-      geoLocation, address, skills, experienceYears, hourlyRate,
-      chargeType, serviceRadiusKm, bio, businessName, description
-    } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Name is required for new accounts' });
@@ -125,24 +126,48 @@ const firebaseLogin = asyncHandler(async (req, res) => {
         throw err;
       }
     }
+  }
 
-    if (userRoles.includes('TECHNICIAN')) {
-      await TechnicianProfile.create({
-        userId: user._id,
-        skills: skills || [],
-        experienceYears: Number(experienceYears) || 0,
-        hourlyRate: Number(hourlyRate) || 0,
-        chargeType: chargeType || 'hourly',
-        serviceRadiusKm: Number(serviceRadiusKm) || 10,
-        bio: bio || ''
-      });
+  // Ensure TechnicianProfile exists for TECHNICIAN users (handles first-time + retry after partial failure)
+  if (user.roles.includes('TECHNICIAN')) {
+    const existingProfile = await TechnicianProfile.findOne({ userId: user._id });
+    if (!existingProfile) {
+      try {
+        await TechnicianProfile.create({
+          userId: user._id,
+          skills: skills || [],
+          experienceYears: Number(experienceYears) || 0,
+          hourlyRate: Number(hourlyRate) || 0,
+          chargeType: chargeType || 'hourly',
+          serviceRadiusKm: Number(serviceRadiusKm) || 10,
+          bio: bio || ''
+        });
+      } catch (profileErr) {
+        // If profile creation fails, clean up the orphaned user (only for new registrations)
+        if (isNewUser) {
+          await User.deleteOne({ _id: user._id });
+        }
+        throw profileErr;
+      }
     }
-    if (userRoles.includes('TOOL_OWNER')) {
-      await OwnerProfile.create({
-        userId: user._id,
-        businessName: businessName || `${name.trim()}'s Shop`,
-        description: description || ''
-      });
+  }
+
+  // Ensure OwnerProfile exists for TOOL_OWNER users
+  if (user.roles.includes('TOOL_OWNER')) {
+    const existingProfile = await OwnerProfile.findOne({ userId: user._id });
+    if (!existingProfile) {
+      try {
+        await OwnerProfile.create({
+          userId: user._id,
+          businessName: businessName || `${(user.name || name || '').trim()}'s Shop`,
+          description: description || ''
+        });
+      } catch (profileErr) {
+        if (isNewUser) {
+          await User.deleteOne({ _id: user._id });
+        }
+        throw profileErr;
+      }
     }
   }
 
