@@ -26,10 +26,14 @@ const videoCallSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['scheduled', 'ongoing', 'ended'],
+    enum: ['scheduled', 'ongoing', 'paused', 'ended'],
     default: 'scheduled'
   },
   duration: {
+    type: Number,
+    default: 0
+  },
+  rejoinCount: {
     type: Number,
     default: 0
   }

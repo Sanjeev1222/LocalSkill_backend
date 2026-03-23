@@ -99,7 +99,12 @@ exports.generateToken = asyncHandler(async (req, res) => {
   // 4. Check call isn't already ended
   if (videoCall.status === 'ended') {
     res.status(400);
-    throw new Error('This call has already ended');
+    throw new Error('This call has already ended. Maximum rejoins reached.');
+  }
+
+  // If call was paused (user left and is rejoining), increment rejoin count
+  if (videoCall.status === 'paused') {
+    videoCall.rejoinCount += 1;
   }
 
   // 6. Generate Agora token
@@ -112,7 +117,7 @@ exports.generateToken = asyncHandler(async (req, res) => {
     APP_ID, APP_CERTIFICATE, channelName, uid, role, tokenExpiry
   );
 
-  if (videoCall.status === 'scheduled') {
+  if (['scheduled', 'paused'].includes(videoCall.status)) {
     videoCall.status = 'ongoing';
     await videoCall.save();
   }
@@ -159,12 +164,14 @@ exports.getCallByBooking = asyncHandler(async (req, res) => {
   }
 
   const canJoin = videoCall.status !== 'ended' && withinJoinWindow(videoCall);
+  const remainingRejoins = Math.max(0, 3 - videoCall.rejoinCount);
 
   res.json({
     success: true,
     data: {
       ...videoCall.toObject(),
-      canJoin
+      canJoin,
+      remainingRejoins
     }
   });
 });
@@ -194,10 +201,14 @@ exports.endCall = asyncHandler(async (req, res) => {
     throw new Error('No active call found');
   }
 
-  videoCall.status = 'ended';
-  if (videoCall.status === 'ongoing') {
-    videoCall.duration = Math.round((Date.now() - new Date(videoCall.updatedAt).getTime()) / 1000);
+  // Allow up to 3 rejoins before permanently ending the call
+  const MAX_REJOINS = 3;
+  if (videoCall.rejoinCount < MAX_REJOINS) {
+    videoCall.status = 'paused';
+  } else {
+    videoCall.status = 'ended';
   }
+  videoCall.duration += Math.round((Date.now() - new Date(videoCall.updatedAt).getTime()) / 1000);
   await videoCall.save();
 
   res.json({ success: true, message: 'Call ended', data: videoCall });
